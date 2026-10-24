@@ -136,6 +136,16 @@ main {
   border-radius: var(--radius);
   overflow: hidden;
 }
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 4px;
+  background: var(--border);
+}
+.progress span { display: block; height: 100%; background: var(--accent); transition: width .2s ease-out; }
 .scroller {
   position: absolute;
   inset: 0;
@@ -150,9 +160,10 @@ main[data-mode="edit"] .notes { cursor: pointer; }
 .dock, .settings { grid-area: dock; min-width: 0; }
 .dock { overflow-y: auto; margin: -6px; padding: 6px; }
 .panel { display: none; flex-direction: column; gap: var(--s3); }
-main[data-panel="guess"] .guess-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel { display: flex; }
+main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel { display: flex; }
 .feedback, .hint { margin: 0; min-height: 1.45em; font-size: 17px; text-align: center; }
 .feedback { font-weight: 600; }
+.feedback:focus { outline: none; }
 .feedback.ok { color: var(--ok); }
 .feedback.ko { color: var(--ko); }
 .hint { color: var(--muted); font-size: 15px; }
@@ -188,6 +199,23 @@ main[data-panel="guess"] .guess-panel, main[data-panel="review"] .review-panel, 
 }
 .score b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--s2) var(--s1);
+  text-align: center;
+}
+.tile b { font-size: 20px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile span { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.review-panel > .row:last-child {
+  position: sticky;
+  bottom: -6px;
+  padding: var(--s2) 0 6px;
+  margin-top: calc(-1 * var(--s2));
+  background: var(--bg);
+}
 .per-note { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .stat {
   display: flex;
@@ -201,6 +229,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="review"] .review-panel, 
 }
 .stat-name { font-weight: 650; }
 .stat-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.stat-time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .meter { width: 70%; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
 .meter span { display: block; height: 100%; background: var(--ok); }
 .confusions { margin: 0; text-align: center; }
@@ -318,6 +347,8 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 }
 @media (max-width: 359px) {
   .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .score { gap: var(--s1) var(--s3); }
 }
 @media (min-width: 960px) and (min-height: 560px) {
   main {
@@ -355,6 +386,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 </header>
 <main id="app" data-mode="guess">
   <div class="staff" id="staff">
+    <div class="progress" id="progress" aria-hidden="true" hidden><span id="progressFill"></span></div>
     <div class="scroller" id="scroller">
       <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
       <svg id="noteSvg" class="notes" role="img" aria-label="Portée"></svg>
@@ -362,7 +394,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
   </div>
   <section class="dock" aria-label="Commandes">
     <div class="panel guess-panel">
-      <p class="feedback" id="feedback" aria-live="polite"></p>
+      <p class="feedback" id="feedback" aria-live="polite" tabindex="-1"></p>
       <div class="answers" id="answers" role="group" aria-label="Réponses">
         <button type="button" class="answer" data-note="0">Do<kbd>1</kbd></button>
         <button type="button" class="answer" data-note="1">Ré<kbd>2</kbd></button>
@@ -373,6 +405,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
         <button type="button" class="answer" data-note="6">Si<kbd>7</kbd></button>
       </div>
       <div class="score">
+        <span id="scoreProgress" hidden>Note <b id="scoreNote"></b></span>
         <span>Réussies <b id="scoreOk">0</b></span>
         <span>Erreurs <b id="scoreKo">0</b></span>
         <span>D'affilée <b id="scoreStreak">0</b></span>
@@ -382,13 +415,24 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
         </span>
       </div>
     </div>
+    <div class="panel setup-panel">
+      <p class="hint" id="setupHint"></p>
+      <div class="row" role="group" aria-label="Longueur de la série">
+        <button type="button" data-length="10">10 notes</button>
+        <button type="button" data-length="20">20 notes</button>
+        <button type="button" data-length="0">Sans limite</button>
+      </div>
+      <div class="links">
+        <button type="button" class="link" id="setupCancel">Annuler</button>
+      </div>
+    </div>
     <div class="panel review-panel">
       <p class="hint" id="reviewHint"></p>
-      <div class="score">
-        <span>Notes <b id="statTotal">0</b></span>
-        <span>Réussies <b id="statOk">0</b> <span id="statRate"></span></span>
-        <span>Erreurs <b id="statKo">0</b></span>
-        <span>Meilleure suite <b id="statBest">0</b></span>
+      <div class="tiles">
+        <div class="tile"><b id="statScore"></b><span>réussies</span></div>
+        <div class="tile"><b id="statBest"></b><span>meilleure suite</span></div>
+        <div class="tile"><b id="statTime"></b><span>durée</span></div>
+        <div class="tile"><b id="statPace"></b><span>par note</span></div>
       </div>
       <div class="per-note" id="perNote"></div>
       <p class="hint confusions" id="confusions"></p>
@@ -462,7 +506,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 const Mode = Object.freeze({ GUESS: "guess", EDIT: "edit" });
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
-const Panel = Object.freeze({ GUESS: "guess", REVIEW: "review", EDIT: "edit" });
+const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
 const LINE_MIN = 0;
@@ -473,6 +517,8 @@ const REACH_MAX = 8;
 const REACH_DEFAULT = 2;
 const NOTES_MAX = 200;
 const SERIES_MAX = 500;
+const FREE_SERIES = 0;
+const SERIES_LENGTHS = [10, 20, FREE_SERIES];
 const DEFAULT_NOTE = 28;
 const STORAGE_KEY = "lecture-clefs";
 
@@ -486,7 +532,12 @@ const NOTE_COLUMN = 3.2;
 const EDIT_VISIBLE_COLUMNS = 4;
 const LABEL_ROW = 2.2;
 const REVIEW_ROW = 1.4;
+const REVIEW_VISIBLE_COLUMNS = 10;
+const REVIEW_SPACE_MIN = 8;
 const SPACE_MIN = 10;
+const FEEDBACK_RIGHT = 600;
+const FEEDBACK_WRONG = 1200;
+const SKIP_AFTER = 250;
 const REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 90;
 const SPACE_MAX = 34;
@@ -571,13 +622,39 @@ class Settings {
 }
 
 class Attempt {
-  constructor(target, answer) {
+  constructor(target, answer, ms = null) {
     this.target = target;
     this.answer = answer;
+    this.ms = ms;
   }
 
   get right() {
     return this.answer === mod7(this.target);
+  }
+}
+
+class Stopwatch {
+  constructor() {
+    this.elapsed = 0;
+    this.since = null;
+  }
+
+  reset() {
+    this.elapsed = 0;
+    this.since = null;
+  }
+
+  run(on) {
+    const now = performance.now();
+    if (on && this.since === null) this.since = now;
+    if (!on && this.since !== null) {
+      this.elapsed += now - this.since;
+      this.since = null;
+    }
+  }
+
+  get ms() {
+    return Math.round(this.elapsed + (this.since === null ? 0 : performance.now() - this.since));
   }
 }
 
@@ -587,8 +664,20 @@ class Guess {
     this.answer = null;
     this.fresh = false;
     this.history = [];
+    this.length = FREE_SERIES;
+    this.choosing = false;
     this.reviewing = false;
     this.timer = 0;
+    this.answeredAt = 0;
+    this.clock = new Stopwatch();
+  }
+
+  get full() {
+    return this.length !== FREE_SERIES && this.history.length >= this.length;
+  }
+
+  get complete() {
+    return this.full && !this.answered;
   }
 
   get answered() {
@@ -624,8 +713,9 @@ class Guess {
 }
 
 class StatCell {
-  constructor(count, fill) {
+  constructor(count, time, fill) {
     this.count = count;
+    this.time = time;
     this.fill = fill;
   }
 }
@@ -689,6 +779,7 @@ const statCells = [];
 const $ = (id) => document.getElementById(id);
 const app = $("app");
 const staffEl = $("staff");
+const dock = document.querySelector(".dock");
 const scroller = $("scroller");
 const clefSvg = $("clefSvg");
 const noteSvg = $("noteSvg");
@@ -700,6 +791,8 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const mod7 = (p) => ((p % 7) + 7) % 7;
 const noteName = (p) => NOTE_NAMES[mod7(p)];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const SECONDS = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const lengthButtons = [...document.querySelectorAll("button[data-length]")];
 const SCROLLBAR = measureScrollbar();
 
 function measureScrollbar() {
@@ -759,8 +852,10 @@ function visibleClefs() {
 }
 
 function activePanel() {
+  const g = state.guess;
   if (state.mode === Mode.EDIT) return Panel.EDIT;
-  return state.guess.reviewing ? Panel.REVIEW : Panel.GUESS;
+  if (g.choosing) return Panel.SETUP;
+  return g.reviewing || g.complete ? Panel.REVIEW : Panel.GUESS;
 }
 
 function labelHeight(panel) {
@@ -791,17 +886,20 @@ function computeLayout() {
     topStep = Math.max(topStep, c.line + 2 * c.up + 0.6);
     bottomStep = Math.min(bottomStep, c.line - 2 * c.down - 0.6);
   }
-  const columnar = panel !== Panel.GUESS;
+  const columnar = panel === Panel.EDIT || panel === Panel.REVIEW;
   const labelSpaces = labelHeight(panel);
   const columns = [0, 1].filter((col) => visible.some((c) => c.column === col));
   const clefSpaces = CLEF_LEFT + columns.length * CLEF_COLUMN;
   const heightSpaces = (topStep - bottomStep) / 2 + labelSpaces;
   const noteCount = panel === Panel.EDIT ? state.notes.length + 1 : history.length;
   const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * NOTE_COLUMN : 6;
-  const minNotesSpaces = columnar ? 2 * NOTE_PAD + EDIT_VISIBLE_COLUMNS * NOTE_COLUMN : 5;
+  const reviewing = panel === Panel.REVIEW;
+  const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, REVIEW_VISIBLE_COLUMNS) : EDIT_VISIBLE_COLUMNS;
+  const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * NOTE_COLUMN : 5;
+  const spaceMin = reviewing ? REVIEW_SPACE_MIN : SPACE_MIN;
   const w = staffEl.clientWidth;
   const h = staffEl.clientHeight;
-  const fit = (avail) => clamp(Math.min(avail / heightSpaces, w / (clefSpaces + minNotesSpaces)), SPACE_MIN, SPACE_MAX);
+  const fit = (avail) => clamp(Math.min(avail / heightSpaces, w / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX);
 
   let s = fit(h);
   if (columnar && SCROLLBAR > 0 && (clefSpaces + notesSpaces) * s > w) s = fit(h - SCROLLBAR);
@@ -888,7 +986,7 @@ function strike(parent, node, L) {
 function drawGuess(L) {
   const g = state.guess;
   if (g.target === null) return;
-  const x = L.notesWidth / 2;
+  const x = Math.min(L.notesWidth / 2, L.notesWidth - 4 * L.s);
   const status = g.answered ? (g.right ? "is-correct" : "is-wrong") : "";
   drawNote(noteSvg, L, x, g.target, `note ${status}${g.fresh ? " fresh" : ""}`);
   g.fresh = false;
@@ -947,6 +1045,9 @@ function renderStaff() {
     case Panel.GUESS:
       drawGuess(L);
       break;
+    case Panel.SETUP:
+      noteSvg.setAttribute("aria-label", "Portée");
+      break;
     case Panel.REVIEW:
       drawReview(L);
       break;
@@ -961,7 +1062,7 @@ function guessMessage() {
   if (g.answered) {
     const name = noteName(g.target);
     if (g.right) return [`✓ Bravo, c'est un ${name} !`, "ok"];
-    return [`✗ Non, c'est un ${name} (tu as répondu ${NOTE_NAMES[g.answer]}).`, "ko"];
+    return [`✗ C'est un ${name}, pas un ${NOTE_NAMES[g.answer]}.`, "ko"];
   }
   if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
   return ["Quelle est cette note ?", ""];
@@ -974,8 +1075,32 @@ function editMessage() {
 }
 
 function reviewMessage() {
-  if (!state.guess.history.length) return "Aucune note devinée dans cette série.";
-  return "Les notes de la série dans l'ordre. En rouge, tes erreurs, avec ta réponse barrée.";
+  const g = state.guess;
+  if (!g.history.length) return "Aucune note devinée dans cette série.";
+  const intro = g.complete ? "Série terminée !" : "Les notes de la série dans l'ordre.";
+  return `${intro} En rouge, tes erreurs, avec ta réponse barrée.`;
+}
+
+function setupMessage() {
+  const n = state.guess.history.length;
+  const text = "Combien de notes ? Le bilan s'affiche à la fin de la série.";
+  return n ? `${text} La série en cours sera effacée.` : text;
+}
+
+function formatSeconds(ms) {
+  return `${SECONDS.format(ms / 1000)}\u00a0s`;
+}
+
+function formatDuration(ms) {
+  const total = Math.round(ms / 1000);
+  if (total < 60) return formatSeconds(ms);
+  return `${Math.floor(total / 60)}\u00a0min ${total % 60}\u00a0s`;
+}
+
+function meanTime(attempts) {
+  const timed = attempts.filter((a) => a.ms !== null);
+  if (!timed.length) return null;
+  return timed.reduce((sum, a) => sum + a.ms, 0) / timed.length;
 }
 
 function confusionMessage() {
@@ -996,16 +1121,19 @@ function renderReview() {
   const g = state.guess;
   const n = g.history.length;
   $("reviewHint").textContent = reviewMessage();
-  $("statTotal").textContent = String(n);
-  $("statOk").textContent = String(g.ok);
-  $("statRate").textContent = n ? `(${Math.round((100 * g.ok) / n)} %)` : "";
-  $("statKo").textContent = String(g.ko);
-  $("statBest").textContent = String(g.best);
+  $("statScore").textContent = n ? `${g.ok}/${n}` : "—";
+  $("statBest").textContent = n ? String(g.best) : "—";
+  const timed = g.history.filter((a) => a.ms !== null);
+  const pace = meanTime(timed);
+  $("statTime").textContent = pace === null ? "—" : formatDuration(pace * timed.length);
+  $("statPace").textContent = pace === null ? "—" : formatSeconds(pace);
   $("confusions").textContent = confusionMessage();
   statCells.forEach((cell, step) => {
     const tries = g.history.filter((a) => mod7(a.target) === step);
     const ok = tries.filter((a) => a.right).length;
+    const time = meanTime(tries);
     cell.count.textContent = tries.length ? `${ok}/${tries.length}` : "—";
+    cell.time.textContent = time === null ? "\u00a0" : formatSeconds(time);
     cell.fill.style.width = tries.length ? `${(100 * ok) / tries.length}%` : "0";
   });
 }
@@ -1064,9 +1192,14 @@ function renderPanels() {
   $("scoreOk").textContent = String(g.ok);
   $("scoreKo").textContent = String(g.ko);
   $("scoreStreak").textContent = String(g.streak);
+  $("scoreProgress").hidden = g.length === FREE_SERIES;
+  $("progress").hidden = g.length === FREE_SERIES || activePanel() !== Panel.GUESS;
+  $("progressFill").style.width = `${(100 * Math.min(g.history.length, g.length)) / (g.length || 1)}%`;
+  $("scoreNote").textContent = `${Math.min(g.length, g.history.length + (g.answered ? 0 : 1))}/${g.length}`;
   $("reviewOpen").disabled = !g.history.length;
-  $("newSeriesLink").disabled = !g.history.length;
-  $("newSeries").disabled = !g.history.length;
+  $("reviewClose").textContent = g.complete ? `Encore ${g.length} notes` : "Continuer";
+  $("setupHint").textContent = setupMessage();
+  for (const b of lengthButtons) b.classList.toggle("primary", Number(b.dataset.length) === g.length);
   renderReview();
 
   const [lo, hi] = noteRange();
@@ -1086,12 +1219,20 @@ function render() {
   renderPanels();
   renderStaff();
   reveal();
+  syncClock();
+}
+
+function syncClock() {
+  const g = state.guess;
+  const showing = document.visibilityState === "visible" && answerButtons[0].offsetParent !== null;
+  g.clock.run(showing && activePanel() === Panel.GUESS && g.target !== null && !g.answered);
 }
 
 function save() {
   try {
-    const series = state.guess.history.map((a) => [a.target, a.answer]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, series }));
+    const g = state.guess;
+    const series = g.history.map((a) => [a.target, a.answer, a.ms]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, series, length: g.length }));
   } catch {}
 }
 
@@ -1111,11 +1252,13 @@ function load() {
   if (Array.isArray(raw.series)) {
     const isTarget = (v) => Number.isInteger(v) && v >= LINE_MIN - 2 * REACH_MAX && v <= LINE_MAX + 2 * REACH_MAX;
     const isAnswer = (v) => Number.isInteger(v) && v >= 0 && v < NOTE_NAMES.length;
+    const isTime = (v) => v === undefined || v === null || (Number.isInteger(v) && v >= 0);
     state.guess.history = raw.series
-      .filter((pair) => Array.isArray(pair) && pair.length === 2 && isTarget(pair[0]) && isAnswer(pair[1]))
+      .filter((entry) => Array.isArray(entry) && (entry.length === 2 || entry.length === 3) && isTarget(entry[0]) && isAnswer(entry[1]) && isTime(entry[2]))
       .slice(-SERIES_MAX)
-      .map(([target, answer]) => new Attempt(target, answer));
+      .map(([target, answer, ms]) => new Attempt(target, answer, ms ?? null));
   }
+  if (SERIES_LENGTHS.includes(raw.length)) state.guess.length = raw.length;
 }
 
 function revealY(L, y) {
@@ -1128,7 +1271,8 @@ function revealY(L, y) {
 function reveal() {
   const L = layout;
   if (!L) return;
-  if (activePanel() === Panel.REVIEW) return;
+  const panel = activePanel();
+  if (panel === Panel.REVIEW || panel === Panel.SETUP) return;
   if (state.mode === Mode.GUESS) {
     if (state.guess.target !== null) revealY(L, L.y(state.guess.target));
     return;
@@ -1155,20 +1299,40 @@ function newTarget() {
   g.target = candidates[Math.floor(Math.random() * candidates.length)];
   g.answer = null;
   g.fresh = true;
+  g.clock.reset();
 }
 
 function answer(i) {
   const g = state.guess;
-  if (activePanel() !== Panel.GUESS || g.target === null || g.answered) return;
+  if (activePanel() !== Panel.GUESS || g.target === null) return;
+  if (g.answered) {
+    if (performance.now() - g.answeredAt >= SKIP_AFTER) advance();
+    return;
+  }
   g.answer = i;
-  g.history.push(new Attempt(g.target, i));
+  g.history.push(new Attempt(g.target, i, g.clock.ms));
   if (g.history.length > SERIES_MAX) g.history.shift();
   save();
   render();
-  g.timer = setTimeout(() => {
+  g.answeredAt = performance.now();
+  g.timer = setTimeout(advance, g.right ? FEEDBACK_RIGHT : FEEDBACK_WRONG);
+}
+
+function advance() {
+  const g = state.guess;
+  clearTimeout(g.timer);
+  if (!g.full) {
     newTarget();
     render();
-  }, g.right ? 800 : 1800);
+    return;
+  }
+  g.target = null;
+  g.answer = null;
+  render();
+  if (activePanel() !== Panel.REVIEW) return;
+  scroller.scrollLeft = 0;
+  dock.scrollTop = 0;
+  $("reviewClose").focus();
 }
 
 function setMode(mode) {
@@ -1177,6 +1341,7 @@ function setMode(mode) {
   clearTimeout(g.timer);
   state.mode = mode;
   g.reviewing = false;
+  g.choosing = false;
   if (mode === Mode.GUESS) newTarget();
   save();
   render();
@@ -1268,42 +1433,63 @@ answerButtons.forEach((b, i) => b.addEventListener("click", () => answer(i)));
 function setReviewing(on) {
   state.guess.reviewing = on;
   render();
-  if (on) scroller.scrollLeft = 0;
+  if (on) {
+    scroller.scrollLeft = 0;
+    dock.scrollTop = 0;
+  }
   $(on ? "reviewClose" : "reviewOpen").focus();
 }
 
-function newSeries() {
+function setChoosing(on) {
   const g = state.guess;
-  if (g.history.length && !window.confirm("Commencer une nouvelle série ? Les résultats de celle-ci seront effacés.")) return;
+  g.choosing = on;
+  render();
+  if (on) lengthButtons.find((b) => Number(b.dataset.length) === g.length).focus();
+  else $(activePanel() === Panel.REVIEW ? "newSeries" : "newSeriesLink").focus();
+}
+
+function startSeries(length) {
+  const g = state.guess;
   clearTimeout(g.timer);
+  g.length = length;
   g.history = [];
+  g.choosing = false;
   g.reviewing = false;
   newTarget();
   save();
   render();
+  $("feedback").focus();
 }
 
 $("reviewOpen").addEventListener("click", () => setReviewing(true));
-$("reviewClose").addEventListener("click", () => setReviewing(false));
-$("newSeriesLink").addEventListener("click", newSeries);
-$("newSeries").addEventListener("click", newSeries);
+$("reviewClose").addEventListener("click", () => {
+  if (state.guess.complete) startSeries(state.guess.length);
+  else setReviewing(false);
+});
+$("newSeriesLink").addEventListener("click", () => setChoosing(true));
+$("newSeries").addEventListener("click", () => setChoosing(true));
+$("setupCancel").addEventListener("click", () => setChoosing(false));
+for (const b of lengthButtons) b.addEventListener("click", () => startSeries(Number(b.dataset.length)));
+document.addEventListener("visibilitychange", syncClock);
 
 for (const name of NOTE_NAMES) {
   const cell = document.createElement("div");
   const title = document.createElement("span");
   const count = document.createElement("span");
+  const time = document.createElement("span");
   const meter = document.createElement("span");
   const fill = document.createElement("span");
   cell.className = "stat";
   title.className = "stat-name";
   title.textContent = name[0].toUpperCase() + name.slice(1);
   count.className = "stat-count";
+  time.className = "stat-time";
   meter.className = "meter";
   meter.setAttribute("aria-hidden", "true");
   meter.append(fill);
-  cell.append(title, count, meter);
+  cell.append(title, count, time, meter);
   $("perNote").append(cell);
-  statCells.push(new StatCell(count, fill));
+  statCells.push(new StatCell(count, time, fill));
 }
 
 $("stepUp").addEventListener("click", () => moveSelected(1));
@@ -1428,9 +1614,11 @@ $("resetSettings").addEventListener("click", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
-  if (activePanel() === Panel.REVIEW) {
+  const panel = activePanel();
+  if (panel === Panel.SETUP || panel === Panel.REVIEW) {
     if (event.key !== "Escape") return;
-    setReviewing(false);
+    if (panel === Panel.SETUP) setChoosing(false);
+    else if (!state.guess.complete) setReviewing(false);
     event.preventDefault();
     return;
   }
