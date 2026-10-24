@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>Lecture des clefs</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #f3f0e8;
+  --surface: #ffffff;
+  --paper: #fffdf8;
+  --ink: #1d1b16;
+  --muted: #5d584d;
+  --border: #d9d3c4;
+  --control: #a8a192;
+  --staff: #2b2822;
+  --accent: #5a3fc0;
+  --accent-soft: #ece7fb;
+  --on-accent: #ffffff;
+  --sol: #0b63a8;
+  --ut: #0b7a5c;
+  --fa: #b8560a;
+  --ok: #1a7f37;
+  --ok-soft: #e3f4e8;
+  --ko: #b42318;
+  --ko-soft: #fbe6e3;
+  --radius: 12px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121110;
+    --surface: #1f1e1b;
+    --paper: #1c1b19;
+    --ink: #ece7dc;
+    --muted: #b4ae9f;
+    --border: #3a372f;
+    --control: #6b6658;
+    --staff: #cfc9bb;
+    --accent: #a593f5;
+    --accent-soft: #2d2747;
+    --on-accent: #16131f;
+    --sol: #6cb4ee;
+    --ut: #4fcfa6;
+    --fa: #f0a35e;
+    --ok: #5dd27a;
+    --ok-soft: #173322;
+    --ko: #ff8a80;
+    --ko-soft: #3a1c1a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+}
+.bar h1 { flex: 1; margin: 0; font-size: 18px; font-weight: 650; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .12s, border-color .12s, transform .08s;
+}
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:active:not(:disabled) { transform: translateY(1px); background: var(--accent-soft); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+.modes {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 12px;
+}
+.modes button { border: 0; min-width: 88px; font-weight: 600; background: transparent; }
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0 var(--s2);
+}
+main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-areas: "staff" "dock";
+  grid-template-rows: minmax(160px, 1fr) minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+  padding: 0 var(--s4) var(--s3);
+}
+.staff {
+  grid-area: staff;
+  position: relative;
+  min-height: 160px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.scroller {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.scroller svg { flex: none; display: block; margin-block: auto; }
+.clefs { position: sticky; left: 0; z-index: 1; background: var(--paper); transition: box-shadow .15s; }
+.scroller.scrolled .clefs { box-shadow: 1px 0 0 var(--control); }
+main[data-mode="edit"] .notes { cursor: pointer; }
+.dock, .settings { grid-area: dock; min-width: 0; }
+.dock { overflow-y: auto; margin: -6px; padding: 6px; }
+.panel { display: none; flex-direction: column; gap: var(--s3); }
+main[data-panel="guess"] .guess-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel { display: flex; }
+.feedback, .hint { margin: 0; min-height: 1.45em; font-size: 17px; text-align: center; }
+.feedback { font-weight: 600; }
+.feedback.ok { color: var(--ok); }
+.feedback.ko { color: var(--ko); }
+.hint { color: var(--muted); font-size: 15px; }
+.answers { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.answer {
+  position: relative;
+  min-height: 56px;
+  padding: 0 2px;
+  font-size: 18px;
+  font-weight: 650;
+}
+.answer kbd { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .answer kbd {
+    display: block;
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    font: 500 11px/1 system-ui, sans-serif;
+    color: var(--muted);
+  }
+}
+.answer.correct { background: var(--ok-soft); border: 2px solid var(--ok); color: var(--ok); }
+.answer.wrong { background: var(--ko-soft); border: 2px solid var(--ko); color: var(--ko); animation: shake .25s; }
+.score {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  color: var(--muted);
+  font-size: 15px;
+}
+.score b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; }
+.per-note { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--s1) 0 var(--s2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.stat-name { font-weight: 650; }
+.stat-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.meter { width: 70%; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--ok); }
+.confusions { margin: 0; text-align: center; }
+.row > .primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.row > .primary:active:not(:disabled) { background: var(--accent); }
+.tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }
+.tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 60px;
+  padding: var(--s1) 2px;
+  font-size: 14px;
+}
+.tool svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.tool.primary { background: var(--accent-soft); border-color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.row > button { flex: 1 1 auto; }
+.check { display: flex; align-items: center; gap: var(--s2); min-height: 44px; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
+.check.inline { padding: 0 var(--s2); }
+.check .off { color: var(--muted); font-size: 14px; }
+.swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--c); flex: none; }
+.settings {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  max-height: 60vh;
+  overflow: auto;
+}
+main.settings-open .settings { display: block; }
+main.settings-open .dock { display: none; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; }
+.settings h2 { margin: 0; font-size: 17px; }
+fieldset { border: 0; margin: var(--s4) 0 0; padding: 0; }
+legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
+.help { margin: 0 0 var(--s2); color: var(--muted); font-size: 14px; }
+.stepper { display: flex; align-items: center; gap: var(--s2); min-height: 48px; }
+.stepper > span { flex: 1; }
+.stepper button, .mini button {
+  width: 44px;
+  padding: 0;
+  font-size: 20px;
+  font-weight: 600;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.reach {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  align-items: center;
+  gap: var(--s2);
+}
+.reach-head { color: var(--muted); font-size: 14px; text-align: center; }
+.reach-name { display: flex; align-items: center; gap: var(--s2); font-weight: 600; }
+.reach-name.off { opacity: .45; }
+.mini { display: flex; align-items: center; justify-content: center; gap: 2px; }
+.mini output { min-width: 1.4em; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; }
+.mini button { width: 36px; min-height: 40px; font-size: 18px; }
+@media (max-width: 359px) {
+  .mini button { width: 32px; min-height: 36px; }
+}
+.delta { color: var(--muted); font-size: 14px; }
+.settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); margin-top: var(--s4); }
+.credit { margin: 0; color: var(--muted); font-size: 12px; }
+
+.clef-sol { --c: var(--sol); }
+.clef-ut { --c: var(--ut); }
+.clef-fa { --c: var(--fa); }
+.staff-line, .ledger, .barline { stroke: var(--staff); }
+.ref-line { stroke: var(--c); }
+.bracket { fill: var(--c); }
+.clef-glyph { fill: var(--ink); }
+.clef-glyph.colored { fill: var(--c); }
+.note .head { fill: var(--ink); }
+.note.is-selected .head { fill: var(--accent); }
+.note.is-correct .head { fill: var(--ok); }
+.note.is-wrong .head { fill: var(--ko); }
+.note.fresh { animation: fade .18s ease-out; }
+.sel-col { fill: var(--accent-soft); }
+.ghost { opacity: .35; pointer-events: none; }
+.label {
+  fill: var(--muted);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 650;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-linejoin: round;
+}
+.label.is-selected { fill: var(--accent); }
+.label.is-correct { fill: var(--ok); }
+.label.is-wrong { fill: var(--ko); }
+.label.truth { fill: var(--ink); }
+.strike { stroke: var(--ko); }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media (max-width: 519px) {
+  .bar h1 {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .modes button { min-width: 80px; }
+}
+@media (max-width: 359px) {
+  .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) and (min-height: 560px) {
+  main {
+    grid-template-areas: "staff settings" "dock settings";
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+  .settings { display: block; grid-area: settings; max-height: none; }
+  main.settings-open .dock { display: block; }
+  .settings-toggle, .settings-close { display: none; }
+  .dock { max-width: 760px; width: 100%; justify-self: center; overflow: visible; margin: 0; padding: 0; }
+}
+@media (max-height: 559px) and (min-width: 600px) {
+  main {
+    grid-template-areas: "staff dock";
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 36%);
+  }
+  .dock, .settings { overflow: auto; max-height: none; }
+  .dock { align-self: center; max-height: 100%; }
+  .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .answer { min-height: 48px; }
+  .tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tool { min-height: 48px; flex-direction: row; gap: var(--s2); }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Lecture des clefs</h1>
+  <div class="modes" role="group" aria-label="Mode">
+    <button type="button" data-mode="guess" aria-pressed="true">Deviner</button>
+    <button type="button" data-mode="edit" aria-pressed="false">Écrire</button>
+  </div>
+  <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings">Réglages</button>
+</header>
+<main id="app" data-mode="guess">
+  <div class="staff" id="staff">
+    <div class="scroller" id="scroller">
+      <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
+      <svg id="noteSvg" class="notes" role="img" aria-label="Portée"></svg>
+    </div>
+  </div>
+  <section class="dock" aria-label="Commandes">
+    <div class="panel guess-panel">
+      <p class="feedback" id="feedback" aria-live="polite"></p>
+      <div class="answers" id="answers" role="group" aria-label="Réponses">
+        <button type="button" class="answer" data-note="0">Do<kbd>1</kbd></button>
+        <button type="button" class="answer" data-note="1">Ré<kbd>2</kbd></button>
+        <button type="button" class="answer" data-note="2">Mi<kbd>3</kbd></button>
+        <button type="button" class="answer" data-note="3">Fa<kbd>4</kbd></button>
+        <button type="button" class="answer" data-note="4">Sol<kbd>5</kbd></button>
+        <button type="button" class="answer" data-note="5">La<kbd>6</kbd></button>
+        <button type="button" class="answer" data-note="6">Si<kbd>7</kbd></button>
+      </div>
+      <div class="score">
+        <span>Réussies <b id="scoreOk">0</b></span>
+        <span>Erreurs <b id="scoreKo">0</b></span>
+        <span>D'affilée <b id="scoreStreak">0</b></span>
+        <span class="links">
+          <button type="button" class="link" id="reviewOpen">Voir le bilan</button>
+          <button type="button" class="link" id="newSeriesLink">Nouvelle série</button>
+        </span>
+      </div>
+    </div>
+    <div class="panel review-panel">
+      <p class="hint" id="reviewHint"></p>
+      <div class="score">
+        <span>Notes <b id="statTotal">0</b></span>
+        <span>Réussies <b id="statOk">0</b> <span id="statRate"></span></span>
+        <span>Erreurs <b id="statKo">0</b></span>
+        <span>Meilleure suite <b id="statBest">0</b></span>
+      </div>
+      <div class="per-note" id="perNote"></div>
+      <p class="hint confusions" id="confusions"></p>
+      <div class="row">
+        <button type="button" class="primary" id="reviewClose">Continuer</button>
+        <button type="button" id="newSeries">Nouvelle série</button>
+      </div>
+    </div>
+    <div class="panel edit-panel">
+      <p class="hint" id="editHint" aria-live="polite"></p>
+      <div class="tools">
+        <button type="button" class="tool primary" id="stepUp" aria-label="Monter la note d'un degré"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>Monter</button>
+        <button type="button" class="tool primary" id="stepDown" aria-label="Descendre la note d'un degré"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>Descendre</button>
+        <button type="button" class="tool" id="octaveUp" aria-label="Monter la note d'une octave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12l6-6 6 6M6 18l6-6 6 6"/></svg>Octave</button>
+        <button type="button" class="tool" id="octaveDown" aria-label="Descendre la note d'une octave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l6 6 6-6M6 12l6 6 6-6"/></svg>Octave</button>
+      </div>
+      <div class="row">
+        <button type="button" id="addNote">Ajouter</button>
+        <button type="button" id="removeNote">Supprimer</button>
+        <button type="button" id="clearNotes">Tout effacer</button>
+        <label class="check inline"><input type="checkbox" id="showNames">Noms</label>
+      </div>
+    </div>
+  </section>
+  <aside class="settings" id="settings" aria-label="Réglages">
+    <div class="settings-head">
+      <h2>Réglages</h2>
+      <button type="button" class="link settings-close" id="settingsClose">Fermer</button>
+    </div>
+    <fieldset>
+      <legend>Clefs</legend>
+      <label class="check clef-sol"><input type="checkbox" data-clef="sol"><span class="swatch"></span>Clef de sol <span class="off"></span></label>
+      <label class="check clef-ut"><input type="checkbox" data-clef="ut"><span class="swatch"></span>Clef d'ut <span class="off"></span></label>
+      <label class="check clef-fa"><input type="checkbox" data-clef="fa"><span class="swatch"></span>Clef de fa <span class="off"></span></label>
+      <label class="check"><input type="checkbox" id="guides">Repères de couleur</label>
+      <p class="help">Colore la ligne de chaque clef et marque ses 5 lignes habituelles.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Notes à deviner</legend>
+      <p class="help">Lignes supplémentaires autorisées autour des 5 lignes de chaque clef.</p>
+      <div class="reach" id="reach">
+        <span></span>
+        <span class="reach-head">En dessous</span>
+        <span class="reach-head">Au-dessus</span>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Lignes de la portée</legend>
+      <div class="stepper">
+        <span>En haut : <b id="topName"></b> <span class="delta" id="topDelta"></span></span>
+        <button type="button" id="topRemove" aria-label="Enlever une ligne en haut">−</button>
+        <button type="button" id="topAdd" aria-label="Ajouter une ligne en haut">+</button>
+      </div>
+      <div class="stepper">
+        <span>En bas : <b id="bottomName"></b> <span class="delta" id="bottomDelta"></span></span>
+        <button type="button" id="bottomRemove" aria-label="Enlever une ligne en bas">−</button>
+        <button type="button" id="bottomAdd" aria-label="Ajouter une ligne en bas">+</button>
+      </div>
+      <p class="help" id="lineCount"></p>
+      <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
+    </fieldset>
+    <div class="settings-foot">
+      <button type="button" class="link" id="resetSettings">Réglages par défaut</button>
+      <p class="credit">Symboles musicaux : police Bravura, SIL Open Font License 1.1.</p>
+    </div>
+  </aside>
+</main>
+<script>
+"use strict";
+
+const Mode = Object.freeze({ GUESS: "guess", EDIT: "edit" });
+const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
+const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
+const Panel = Object.freeze({ GUESS: "guess", REVIEW: "review", EDIT: "edit" });
+
+const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
+const LINE_MIN = 0;
+const LINE_MAX = 62;
+const DEFAULT_TOP = 38;
+const DEFAULT_BOTTOM = 18;
+const REACH_MAX = 8;
+const REACH_DEFAULT = 2;
+const NOTES_MAX = 200;
+const SERIES_MAX = 500;
+const DEFAULT_NOTE = 28;
+const STORAGE_KEY = "lecture-clefs";
+
+const GLYPH_UNITS_PER_SPACE = 250;
+const NOTEHEAD_WIDTH = 1.688;
+const LEDGER_EXTENSION = 0.4;
+const CLEF_LEFT = 0.6;
+const CLEF_COLUMN = 4.2;
+const NOTE_PAD = 1;
+const NOTE_COLUMN = 3.2;
+const EDIT_VISIBLE_COLUMNS = 4;
+const LABEL_ROW = 2.2;
+const REVIEW_ROW = 1.4;
+const SPACE_MIN = 10;
+const REPEAT_DELAY = 400;
+const REPEAT_INTERVAL = 90;
+const SPACE_MAX = 34;
+
+const GLYPHS = Object.freeze({
+  gClef: "M376 415C374 427 376 428 382 434C398 449 419 470 438 491C522 583 572 702 572 815C572 902 548 988 507 1048C492 1070 466 1098 455 1098C441 1098 410 1072 390 1050C316 968 292 843 292 739C292 681 299 616 306 575C308 563 309 561 297 551C233 498 164 437 112 373C43 287 0 194 0 87C0 -87 119 -252 364 -252C387 -252 413 -250 433 -246C444 -244 446 -243 448 -255C460 -322 475 -409 475 -456C475 -604 375 -622 316 -622C262 -622 236 -606 236 -593C236 -586 245 -583 268 -576C299 -567 335 -540 335 -482C335 -427 300 -380 239 -380C172 -380 132 -433 132 -495C132 -560 171 -658 322 -658C389 -658 519 -628 519 -458C519 -401 501 -306 490 -244C488 -232 489 -233 503 -227C604 -187 671 -102 671 11C671 139 577 252 430 252C404 252 404 252 401 270ZM470 943C503 943 530 916 530 861C530 792 497 728 419 650C403 634 379 611 356 591C349 585 345 586 343 599C339 625 337 659 337 691C337 847 409 943 470 943ZM361 262C364 243 364 244 346 238C258 208 201 129 201 44C201 -46 248 -110 316 -133C324 -136 336 -139 343 -139C351 -139 355 -134 355 -128C355 -121 347 -118 340 -115C298 -97 268 -54 268 -8C268 49 307 92 368 109C384 113 386 112 388 101L438 -197C440 -208 439 -208 424 -211C408 -214 388 -216 368 -216C193 -216 80 -119 80 20C80 79 90 158 173 252C233 319 279 356 326 394C336 402 338 401 340 390ZM430 103C428 115 429 118 441 117C522 110 589 42 589 -46C589 -109 551 -160 495 -188C483 -194 481 -194 479 -182Z",
+  cClef: "M230 482C230 496 223 503 209 503H208C194 503 187 496 187 482V-482C187 -496 194 -503 208 -503H209C223 -503 230 -496 230 -482V-44C230 -36 235 -37 239 -38C265 -45 307 -71 328 -184C331 -200 337 -209 347 -209C358 -209 363 -199 368 -182C381 -138 404 -89 475 -89C540 -89 558 -153 558 -284C558 -415 535 -474 452 -474C430 -474 410 -471 394 -466C377 -461 367 -454 367 -447C367 -442 383 -436 394 -432C414 -425 434 -405 434 -367C434 -323 405 -298 366 -298C323 -298 289 -327 289 -380C289 -443 344 -506 463 -506C627 -506 699 -391 699 -287C699 -149 623 -53 490 -53C461 -53 442 -58 429 -62C424 -64 418 -65 413 -65C409 -65 404 -64 400 -61C386 -52 364 -20 364 0C364 20 386 52 400 61C404 64 409 65 413 65C418 65 424 64 429 62C442 58 461 53 490 53C623 53 699 149 699 287C699 391 627 506 463 506C344 506 289 443 289 380C289 327 323 298 366 298C405 298 434 323 434 367C434 405 414 425 394 432C383 436 367 442 367 447C367 454 377 461 394 466C410 471 430 474 452 474C535 474 558 415 558 284C558 153 540 89 475 89C404 89 381 138 368 182C363 199 358 209 347 209C337 209 331 200 328 184C307 71 265 45 239 38C235 37 230 36 230 44ZM21 503C7 503 0 496 0 482V-482C0 -496 7 -503 21 -503H107C121 -503 128 -496 128 -482V482C128 496 121 503 107 503Z",
+  fClef: "M252 262C78 262 0 135 0 39C0 -41 42 -110 123 -110C186 -110 229 -66 229 -4C229 60 182 100 133 100C106 100 96 93 83 93C70 93 67 101 67 111C67 151 127 224 229 224C335 224 381 120 381 -37C381 -140 359 -260 297 -356C237 -449 134 -534 10 -605C1 -610 -5 -615 -5 -623C-5 -629 -1 -635 8 -635C13 -635 19 -633 25 -630C158 -565 286 -489 392 -375C479 -281 531 -159 531 -28C531 146 425 262 252 262ZM629 180C598 180 574 156 574 125C574 94 598 70 629 70C660 70 684 94 684 125C684 156 660 180 629 180ZM630 -71C599 -71 576 -94 576 -125C576 -156 599 -179 630 -179C661 -179 684 -156 684 -125C684 -94 661 -71 630 -71Z",
+  noteheadWhole: "M216 125C83 125 0 70 0 2C0 -65 57 -125 206 -125C370 -125 422 -68 422 2C422 73 309 125 216 125ZM111 63C122 98 159 103 190 103C259 103 314 29 314 -31C314 -38 313 -44 312 -50C307 -75 293 -92 268 -98C258 -101 247 -102 237 -102C228 -102 220 -101 211 -98C194 -93 178 -84 164 -72C156 -65 149 -58 143 -50C123 -27 108 7 108 39C108 47 109 55 111 63Z",
+});
+
+class ClefDef {
+  constructor(id, name, label, line, staffLow, staffHigh, column, glyph, up, down) {
+    this.id = id;
+    this.name = name;
+    this.label = label;
+    this.line = line;
+    this.staffLow = staffLow;
+    this.staffHigh = staffHigh;
+    this.column = column;
+    this.glyph = glyph;
+    this.up = up;
+    this.down = down;
+  }
+}
+
+const CLEFS = [
+  new ClefDef(ClefId.SOL, "Sol", "Clef de sol", 32, 30, 38, 0, GLYPHS.gClef, 4.392, 2.632),
+  new ClefDef(ClefId.UT, "Ut", "Clef d'ut", 28, 24, 32, 1, GLYPHS.cClef, 2.024, 2.024),
+  new ClefDef(ClefId.FA, "Fa", "Clef de fa", 24, 18, 26, 0, GLYPHS.fClef, 1.048, 2.54),
+];
+
+class Reach {
+  constructor(below = REACH_DEFAULT, above = REACH_DEFAULT) {
+    this[Side.BELOW] = below;
+    this[Side.ABOVE] = above;
+  }
+}
+
+class Settings {
+  constructor() {
+    this.clefs = new Set(Object.values(ClefId));
+    this.top = DEFAULT_TOP;
+    this.bottom = DEFAULT_BOTTOM;
+    this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
+    this.guides = true;
+    this.names = false;
+  }
+
+  toJSON() {
+    return {
+      clefs: [...this.clefs],
+      top: this.top,
+      bottom: this.bottom,
+      reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
+      guides: this.guides,
+      names: this.names,
+    };
+  }
+
+  static from(raw) {
+    const s = new Settings();
+    if (!raw || typeof raw !== "object") return s;
+    const ids = Object.values(ClefId);
+    if (Array.isArray(raw.clefs)) s.clefs = new Set(raw.clefs.filter((id) => ids.includes(id)));
+    const isLine = (v) => Number.isInteger(v) && v % 2 === 0 && v >= LINE_MIN && v <= LINE_MAX;
+    if (isLine(raw.top) && isLine(raw.bottom) && raw.bottom <= raw.top) {
+      s.top = raw.top;
+      s.bottom = raw.bottom;
+    }
+    if (raw.reach && typeof raw.reach === "object") {
+      const isReach = (v) => Number.isInteger(v) && v >= 0 && v <= REACH_MAX;
+      for (const id of ids) {
+        const pair = raw.reach[id];
+        if (Array.isArray(pair) && pair.length === 2 && pair.every(isReach)) s.reach.set(id, new Reach(pair[0], pair[1]));
+      }
+    }
+    if (typeof raw.guides === "boolean") s.guides = raw.guides;
+    if (typeof raw.names === "boolean") s.names = raw.names;
+    return s;
+  }
+}
+
+class Attempt {
+  constructor(target, answer) {
+    this.target = target;
+    this.answer = answer;
+  }
+
+  get right() {
+    return this.answer === mod7(this.target);
+  }
+}
+
+class Guess {
+  constructor() {
+    this.target = null;
+    this.answer = null;
+    this.fresh = false;
+    this.history = [];
+    this.reviewing = false;
+    this.timer = 0;
+  }
+
+  get answered() {
+    return this.answer !== null;
+  }
+
+  get right() {
+    return this.answered && this.answer === mod7(this.target);
+  }
+
+  get ok() {
+    return this.history.filter((a) => a.right).length;
+  }
+
+  get ko() {
+    return this.history.length - this.ok;
+  }
+
+  get streak() {
+    const last = this.history.findLastIndex((a) => !a.right);
+    return this.history.length - 1 - last;
+  }
+
+  get best() {
+    let best = 0;
+    let run = 0;
+    for (const a of this.history) {
+      run = a.right ? run + 1 : 0;
+      best = Math.max(best, run);
+    }
+    return best;
+  }
+}
+
+class StatCell {
+  constructor(count, fill) {
+    this.count = count;
+    this.fill = fill;
+  }
+}
+
+class Layout {
+  constructor(s, topStep, height, clefWidth, columnX, notesWidth, labelY) {
+    this.s = s;
+    this.topStep = topStep;
+    this.height = height;
+    this.clefWidth = clefWidth;
+    this.columnX = columnX;
+    this.notesWidth = notesWidth;
+    this.labelY = labelY;
+    this.lineWidth = Math.max(1, 0.13 * s);
+    this.refWidth = Math.max(2, 0.26 * s);
+    this.ledgerWidth = Math.max(1.2, 0.16 * s);
+    this.column = NOTE_COLUMN * s;
+  }
+
+  y(p) {
+    return ((this.topStep - p) * this.s) / 2;
+  }
+
+  pos(y) {
+    return Math.round(this.topStep - (2 * y) / this.s);
+  }
+
+  noteX(i) {
+    return (NOTE_PAD + NOTE_COLUMN / 2) * this.s + i * this.column;
+  }
+
+  noteIndex(x) {
+    return Math.floor((x - NOTE_PAD * this.s) / this.column);
+  }
+}
+
+const state = {
+  mode: Mode.GUESS,
+  settings: new Settings(),
+  notes: [],
+  selected: -1,
+  settingsOpen: false,
+  guess: new Guess(),
+};
+let layout = null;
+let ghost = null;
+
+class ReachControl {
+  constructor(clef, side, name, output, minus, plus) {
+    this.clef = clef;
+    this.side = side;
+    this.name = name;
+    this.output = output;
+    this.minus = minus;
+    this.plus = plus;
+  }
+}
+const reachControls = [];
+const statCells = [];
+
+const $ = (id) => document.getElementById(id);
+const app = $("app");
+const staffEl = $("staff");
+const scroller = $("scroller");
+const clefSvg = $("clefSvg");
+const noteSvg = $("noteSvg");
+const answerButtons = [...document.querySelectorAll(".answer")];
+const modeButtons = [...document.querySelectorAll(".modes button")];
+const clefInputs = [...document.querySelectorAll("input[data-clef]")];
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const mod7 = (p) => ((p % 7) + 7) % 7;
+const noteName = (p) => NOTE_NAMES[mod7(p)];
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const SCROLLBAR = measureScrollbar();
+
+function measureScrollbar() {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;top:-200px;width:100px;height:100px;overflow:scroll";
+  document.body.appendChild(probe);
+  const size = probe.offsetHeight - probe.clientHeight;
+  probe.remove();
+  return size;
+}
+
+function svgEl(name, attrs, parent) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  parent.appendChild(node);
+  return node;
+}
+
+function noteRange() {
+  let [lo, hi] = staffRange();
+  lo -= 1;
+  hi += 1;
+  for (const c of visibleClefs()) {
+    const [clefLo, clefHi] = clefRange(c);
+    lo = Math.min(lo, clefLo);
+    hi = Math.max(hi, clefHi);
+  }
+  return [lo, hi];
+}
+
+function staffRange() {
+  const s = state.settings;
+  return [s.bottom - 2 * REACH_DEFAULT, s.top + 2 * REACH_DEFAULT];
+}
+
+function clefRange(clef) {
+  const r = state.settings.reach.get(clef.id);
+  return [clef.staffLow - 2 * r[Side.BELOW], clef.staffHigh + 2 * r[Side.ABOVE]];
+}
+
+function guessPositions() {
+  const clefs = visibleClefs();
+  const ranges = clefs.length ? clefs.map(clefRange) : [staffRange()];
+  const positions = new Set();
+  for (const [lo, hi] of ranges) {
+    for (let p = lo; p <= hi; p += 1) positions.add(p);
+  }
+  return [...positions];
+}
+
+function lineAvailable(clef) {
+  return clef.line >= state.settings.bottom && clef.line <= state.settings.top;
+}
+
+function visibleClefs() {
+  return CLEFS.filter((c) => state.settings.clefs.has(c.id) && lineAvailable(c));
+}
+
+function activePanel() {
+  if (state.mode === Mode.EDIT) return Panel.EDIT;
+  return state.guess.reviewing ? Panel.REVIEW : Panel.GUESS;
+}
+
+function labelHeight(panel) {
+  switch (panel) {
+    case Panel.EDIT:
+      return state.settings.names ? LABEL_ROW : 0;
+    case Panel.REVIEW:
+      return LABEL_ROW + (state.guess.ko > 0 ? REVIEW_ROW : 0);
+    default:
+      return 0;
+  }
+}
+
+function computeLayout() {
+  const visible = visibleClefs();
+  const panel = activePanel();
+  const history = state.guess.history;
+  let [lo, hi] = noteRange();
+  if (panel === Panel.REVIEW) {
+    for (const a of history) {
+      lo = Math.min(lo, a.target);
+      hi = Math.max(hi, a.target);
+    }
+  }
+  let topStep = hi + 1.2;
+  let bottomStep = lo - 1.2;
+  for (const c of visible) {
+    topStep = Math.max(topStep, c.line + 2 * c.up + 0.6);
+    bottomStep = Math.min(bottomStep, c.line - 2 * c.down - 0.6);
+  }
+  const columnar = panel !== Panel.GUESS;
+  const labelSpaces = labelHeight(panel);
+  const columns = [0, 1].filter((col) => visible.some((c) => c.column === col));
+  const clefSpaces = CLEF_LEFT + columns.length * CLEF_COLUMN;
+  const heightSpaces = (topStep - bottomStep) / 2 + labelSpaces;
+  const noteCount = panel === Panel.EDIT ? state.notes.length + 1 : history.length;
+  const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * NOTE_COLUMN : 6;
+  const minNotesSpaces = columnar ? 2 * NOTE_PAD + EDIT_VISIBLE_COLUMNS * NOTE_COLUMN : 5;
+  const w = staffEl.clientWidth;
+  const h = staffEl.clientHeight;
+  const fit = (avail) => clamp(Math.min(avail / heightSpaces, w / (clefSpaces + minNotesSpaces)), SPACE_MIN, SPACE_MAX);
+
+  let s = fit(h);
+  if (columnar && SCROLLBAR > 0 && (clefSpaces + notesSpaces) * s > w) s = fit(h - SCROLLBAR);
+
+  const clefWidth = Math.round(clefSpaces * s);
+  const columnX = new Map(columns.map((col, i) => [col, (CLEF_LEFT + i * CLEF_COLUMN) * s]));
+  const notesWidth = Math.max(w - clefWidth, Math.ceil(notesSpaces * s));
+  const staffHeight = ((topStep - bottomStep) * s) / 2;
+  const labelY = staffHeight + 1.3 * s;
+  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefWidth, columnX, notesWidth, labelY);
+}
+
+function glyph(parent, d, x, y, s, cls) {
+  const k = s / GLYPH_UNITS_PER_SPACE;
+  return svgEl("path", { d, class: cls, transform: `translate(${x} ${y}) scale(${k} ${-k})` }, parent);
+}
+
+function drawLines(svg, L, x1, x2) {
+  const st = state.settings;
+  const visible = visibleClefs();
+  for (let p = st.bottom; p <= st.top; p += 2) {
+    const ref = st.guides ? visible.find((c) => c.line === p) : undefined;
+    svgEl("line", {
+      x1, x2, y1: L.y(p), y2: L.y(p),
+      class: ref ? `ref-line clef-${ref.id}` : "staff-line",
+      "stroke-width": ref ? L.refWidth : L.lineWidth,
+    }, svg);
+  }
+}
+
+function drawClefs(L) {
+  const st = state.settings;
+  const barX = 0.3 * L.s;
+  drawLines(clefSvg, L, barX, L.clefWidth);
+  svgEl("line", { x1: barX, x2: barX, y1: L.y(st.top), y2: L.y(st.bottom), class: "barline", "stroke-width": L.lineWidth }, clefSvg);
+  for (const c of visibleClefs()) {
+    const x = L.columnX.get(c.column);
+    if (st.guides) {
+      const yTop = L.y(Math.min(c.staffHigh, st.top));
+      const yBottom = L.y(Math.max(c.staffLow, st.bottom));
+      const width = 0.3 * L.s;
+      svgEl("rect", {
+        x, y: yTop - width / 2, width, height: yBottom - yTop + width, rx: width / 2,
+        class: `bracket clef-${c.id}`,
+      }, clefSvg);
+    }
+    glyph(clefSvg, c.glyph, x + 0.65 * L.s, L.y(c.line), L.s, `clef-glyph clef-${c.id}${st.guides ? " colored" : ""}`);
+  }
+}
+
+function drawNote(parent, L, x, p, cls) {
+  const st = state.settings;
+  const g = svgEl("g", { class: cls }, parent);
+  const half = (NOTEHEAD_WIDTH / 2 + LEDGER_EXTENSION) * L.s;
+  const ledger = (l) => svgEl("line", {
+    x1: x - half, x2: x + half, y1: L.y(l), y2: L.y(l),
+    class: "ledger", "stroke-width": L.ledgerWidth,
+  }, g);
+  for (let l = st.top + 2; l <= p; l += 2) ledger(l);
+  for (let l = st.bottom - 2; l >= p; l -= 2) ledger(l);
+  glyph(g, GLYPHS.noteheadWhole, x - (NOTEHEAD_WIDTH / 2) * L.s, L.y(p), L.s, "head");
+  return g;
+}
+
+function label(parent, L, x, y, text, cls, anchor) {
+  const size = clamp(0.9 * L.s, 12, 24);
+  const node = svgEl("text", {
+    x, y: y + size * 0.35, class: `label ${cls}`, "font-size": size,
+    "text-anchor": anchor, "stroke-width": Math.max(3, size / 4),
+  }, parent);
+  node.textContent = text;
+  return node;
+}
+
+function strike(parent, node, L) {
+  const box = node.getBBox();
+  const y = box.y + box.height * 0.55;
+  svgEl("line", {
+    x1: box.x - 1, x2: box.x + box.width + 1, y1: y, y2: y,
+    class: "strike", "stroke-width": Math.max(1.5, 0.12 * L.s),
+  }, parent);
+}
+
+function drawGuess(L) {
+  const g = state.guess;
+  if (g.target === null) return;
+  const x = L.notesWidth / 2;
+  const status = g.answered ? (g.right ? "is-correct" : "is-wrong") : "";
+  drawNote(noteSvg, L, x, g.target, `note ${status}${g.fresh ? " fresh" : ""}`);
+  g.fresh = false;
+  if (g.answered) {
+    label(noteSvg, L, x + (NOTEHEAD_WIDTH / 2 + 0.7) * L.s, L.y(g.target), noteName(g.target), status, "start");
+  }
+  noteSvg.setAttribute("aria-label", "Portée avec une note à reconnaître");
+}
+
+function drawEdit(L, back) {
+  const names = state.settings.names;
+  state.notes.forEach((p, i) => {
+    const x = L.noteX(i);
+    const selected = i === state.selected;
+    if (selected) {
+      svgEl("rect", {
+        x: x - L.column / 2 + 0.15 * L.s, y: 0.15 * L.s,
+        width: L.column - 0.3 * L.s, height: L.height - 0.3 * L.s, rx: 0.4 * L.s,
+        class: "sel-col",
+      }, back);
+    }
+    drawNote(noteSvg, L, x, p, selected ? "note is-selected" : "note");
+    if (names) label(noteSvg, L, x, L.labelY, noteName(p), selected ? "is-selected" : "", "middle");
+  });
+  ghost = svgEl("g", { class: "ghost", visibility: "hidden" }, noteSvg);
+  const n = state.notes.length;
+  noteSvg.setAttribute("aria-label", n ? `Portée avec ${n} note${n > 1 ? "s" : ""}` : "Portée vide");
+}
+
+function drawReview(L) {
+  const g = state.guess;
+  g.history.forEach((a, i) => {
+    const x = L.noteX(i);
+    const status = a.right ? "is-correct" : "is-wrong";
+    drawNote(noteSvg, L, x, a.target, `note ${status}`);
+    label(noteSvg, L, x, L.labelY, noteName(a.target), "truth", "middle");
+    if (!a.right) strike(noteSvg, label(noteSvg, L, x, L.labelY + REVIEW_ROW * L.s, NOTE_NAMES[a.answer], "is-wrong", "middle"), L);
+  });
+  const n = g.history.length;
+  noteSvg.setAttribute("aria-label", n ? `Série de ${n} note${n > 1 ? "s" : ""} : ${g.ok} réussie${g.ok > 1 ? "s" : ""}, ${g.ko} erreur${g.ko > 1 ? "s" : ""}` : "Série vide");
+}
+
+function renderStaff() {
+  const L = computeLayout();
+  layout = L;
+  for (const [svg, width] of [[clefSvg, L.clefWidth], [noteSvg, L.notesWidth]]) {
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", L.height);
+    svg.replaceChildren();
+  }
+  ghost = null;
+  drawClefs(L);
+  const back = svgEl("g", {}, noteSvg);
+  drawLines(noteSvg, L, 0, L.notesWidth);
+  switch (activePanel()) {
+    case Panel.GUESS:
+      drawGuess(L);
+      break;
+    case Panel.REVIEW:
+      drawReview(L);
+      break;
+    case Panel.EDIT:
+      drawEdit(L, back);
+      break;
+  }
+}
+
+function guessMessage() {
+  const g = state.guess;
+  if (g.answered) {
+    const name = noteName(g.target);
+    if (g.right) return [`✓ Bravo, c'est un ${name} !`, "ok"];
+    return [`✗ Non, c'est un ${name} (tu as répondu ${NOTE_NAMES[g.answer]}).`, "ko"];
+  }
+  if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
+  return ["Quelle est cette note ?", ""];
+}
+
+function editMessage() {
+  const n = state.notes.length;
+  if (!n) return "Touche la portée pour écrire une note.";
+  return `Note ${state.selected + 1} sur ${n} choisie. Touche la portée pour en ajouter une.`;
+}
+
+function reviewMessage() {
+  if (!state.guess.history.length) return "Aucune note devinée dans cette série.";
+  return "Les notes de la série dans l'ordre. En rouge, tes erreurs, avec ta réponse barrée.";
+}
+
+function confusionMessage() {
+  const g = state.guess;
+  if (!g.history.length) return "";
+  if (!g.ko) return "Aucune erreur dans cette série.";
+  const counts = new Map();
+  for (const a of g.history) {
+    if (a.right) continue;
+    const key = `${NOTE_NAMES[a.answer]} au lieu de ${noteName(a.target)}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return `Erreurs fréquentes : ${top.map(([key, n]) => (n > 1 ? `${key} (${n} fois)` : key)).join(" · ")}`;
+}
+
+function renderReview() {
+  const g = state.guess;
+  const n = g.history.length;
+  $("reviewHint").textContent = reviewMessage();
+  $("statTotal").textContent = String(n);
+  $("statOk").textContent = String(g.ok);
+  $("statRate").textContent = n ? `(${Math.round((100 * g.ok) / n)} %)` : "";
+  $("statKo").textContent = String(g.ko);
+  $("statBest").textContent = String(g.best);
+  $("confusions").textContent = confusionMessage();
+  statCells.forEach((cell, step) => {
+    const tries = g.history.filter((a) => mod7(a.target) === step);
+    const ok = tries.filter((a) => a.right).length;
+    cell.count.textContent = tries.length ? `${ok}/${tries.length}` : "—";
+    cell.fill.style.width = tries.length ? `${(100 * ok) / tries.length}%` : "0";
+  });
+}
+
+function formatDelta(n) {
+  if (n === 0) return "";
+  return `(${n > 0 ? "+" : "−"}${Math.abs(n)})`;
+}
+
+function renderPanels() {
+  const st = state.settings;
+  const g = state.guess;
+  app.dataset.mode = state.mode;
+  app.dataset.panel = activePanel();
+  app.classList.toggle("settings-open", state.settingsOpen);
+  $("settingsToggle").setAttribute("aria-expanded", String(state.settingsOpen));
+  for (const b of modeButtons) b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode));
+
+  for (const input of clefInputs) {
+    const clef = CLEFS.find((c) => c.id === input.dataset.clef);
+    const available = lineAvailable(clef);
+    input.checked = st.clefs.has(clef.id);
+    input.disabled = !available;
+    input.parentElement.querySelector(".off").textContent = available ? "" : "(sa ligne est enlevée)";
+  }
+  $("guides").checked = st.guides;
+  $("showNames").checked = st.names;
+  $("topName").textContent = noteName(st.top);
+  $("bottomName").textContent = noteName(st.bottom);
+  $("topDelta").textContent = formatDelta((st.top - DEFAULT_TOP) / 2);
+  $("bottomDelta").textContent = formatDelta((DEFAULT_BOTTOM - st.bottom) / 2);
+  const lines = (st.top - st.bottom) / 2 + 1;
+  $("lineCount").textContent = `${lines} ligne${lines > 1 ? "s" : ""} au total.`;
+  const visible = visibleClefs();
+  for (const control of reachControls) {
+    const on = visible.includes(control.clef);
+    const value = st.reach.get(control.clef.id)[control.side];
+    control.name.classList.toggle("off", !on);
+    control.output.textContent = String(value);
+    control.minus.disabled = !on || value <= 0;
+    control.plus.disabled = !on || value >= REACH_MAX;
+  }
+  $("topRemove").disabled = st.top <= st.bottom;
+  $("bottomRemove").disabled = st.bottom >= st.top;
+  $("topAdd").disabled = st.top >= LINE_MAX;
+  $("bottomAdd").disabled = st.bottom <= LINE_MIN;
+
+  const [text, tone] = guessMessage();
+  const feedback = $("feedback");
+  feedback.textContent = text;
+  feedback.className = `feedback ${tone}`;
+  answerButtons.forEach((b, i) => {
+    b.classList.toggle("correct", g.answered && i === mod7(g.target));
+    b.classList.toggle("wrong", g.answered && i === g.answer && !g.right);
+  });
+  $("scoreOk").textContent = String(g.ok);
+  $("scoreKo").textContent = String(g.ko);
+  $("scoreStreak").textContent = String(g.streak);
+  $("reviewOpen").disabled = !g.history.length;
+  $("newSeriesLink").disabled = !g.history.length;
+  $("newSeries").disabled = !g.history.length;
+  renderReview();
+
+  const [lo, hi] = noteRange();
+  const sel = state.selected;
+  const p = sel >= 0 ? state.notes[sel] : null;
+  $("editHint").textContent = editMessage();
+  $("stepUp").disabled = p === null || p + 1 > hi;
+  $("stepDown").disabled = p === null || p - 1 < lo;
+  $("octaveUp").disabled = p === null || p + 7 > hi;
+  $("octaveDown").disabled = p === null || p - 7 < lo;
+  $("addNote").disabled = state.notes.length >= NOTES_MAX;
+  $("removeNote").disabled = p === null;
+  $("clearNotes").disabled = state.notes.length === 0;
+}
+
+function render() {
+  renderPanels();
+  renderStaff();
+  reveal();
+}
+
+function save() {
+  try {
+    const series = state.guess.history.map((a) => [a.target, a.answer]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, series }));
+  } catch {}
+}
+
+function load() {
+  let raw = null;
+  try {
+    raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+  } catch {}
+  if (!raw || typeof raw !== "object") return;
+  state.settings = Settings.from(raw.settings);
+  if (Object.values(Mode).includes(raw.mode)) state.mode = raw.mode;
+  if (Array.isArray(raw.notes)) {
+    const [lo, hi] = noteRange();
+    state.notes = raw.notes.filter(Number.isInteger).slice(0, NOTES_MAX).map((p) => clamp(p, lo, hi));
+  }
+  state.selected = state.notes.length - 1;
+  if (Array.isArray(raw.series)) {
+    const isTarget = (v) => Number.isInteger(v) && v >= LINE_MIN - 2 * REACH_MAX && v <= LINE_MAX + 2 * REACH_MAX;
+    const isAnswer = (v) => Number.isInteger(v) && v >= 0 && v < NOTE_NAMES.length;
+    state.guess.history = raw.series
+      .filter((pair) => Array.isArray(pair) && pair.length === 2 && isTarget(pair[0]) && isAnswer(pair[1]))
+      .slice(-SERIES_MAX)
+      .map(([target, answer]) => new Attempt(target, answer));
+  }
+}
+
+function revealY(L, y) {
+  const top = noteSvg.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop + y;
+  const margin = 2 * L.s;
+  if (top - margin < scroller.scrollTop) scroller.scrollTop = top - margin;
+  else if (top + margin > scroller.scrollTop + scroller.clientHeight) scroller.scrollTop = top + margin - scroller.clientHeight;
+}
+
+function reveal() {
+  const L = layout;
+  if (!L) return;
+  if (activePanel() === Panel.REVIEW) return;
+  if (state.mode === Mode.GUESS) {
+    if (state.guess.target !== null) revealY(L, L.y(state.guess.target));
+    return;
+  }
+  if (state.selected < 0) return;
+  const x = L.clefWidth + L.noteX(state.selected);
+  const margin = 1.5 * L.column;
+  const left = scroller.scrollLeft + L.clefWidth;
+  const right = scroller.scrollLeft + scroller.clientWidth;
+  if (x - margin < left) scroller.scrollLeft = x - margin - L.clefWidth;
+  else if (x + margin > right) scroller.scrollLeft = x + margin - scroller.clientWidth;
+  revealY(L, L.y(state.notes[state.selected]));
+}
+
+function commitNotes() {
+  save();
+  render();
+}
+
+function newTarget() {
+  const g = state.guess;
+  const all = guessPositions();
+  const candidates = all.length > 1 ? all.filter((p) => p !== g.target) : all;
+  g.target = candidates[Math.floor(Math.random() * candidates.length)];
+  g.answer = null;
+  g.fresh = true;
+}
+
+function answer(i) {
+  const g = state.guess;
+  if (activePanel() !== Panel.GUESS || g.target === null || g.answered) return;
+  g.answer = i;
+  g.history.push(new Attempt(g.target, i));
+  if (g.history.length > SERIES_MAX) g.history.shift();
+  save();
+  render();
+  g.timer = setTimeout(() => {
+    newTarget();
+    render();
+  }, g.right ? 800 : 1800);
+}
+
+function setMode(mode) {
+  if (mode === state.mode) return;
+  const g = state.guess;
+  clearTimeout(g.timer);
+  state.mode = mode;
+  g.reviewing = false;
+  if (mode === Mode.GUESS) newTarget();
+  save();
+  render();
+}
+
+function settingsChanged() {
+  const [lo, hi] = noteRange();
+  const g = state.guess;
+  state.notes = state.notes.map((p) => clamp(p, lo, hi));
+  if (g.target !== null && !guessPositions().includes(g.target)) {
+    clearTimeout(g.timer);
+    newTarget();
+  }
+  save();
+  render();
+}
+
+function addNote(index, p) {
+  if (state.notes.length >= NOTES_MAX) return;
+  const [lo, hi] = noteRange();
+  state.notes.splice(index, 0, clamp(p, lo, hi));
+  state.selected = index;
+  commitNotes();
+}
+
+function moveSelected(delta) {
+  const i = state.selected;
+  if (i < 0) return;
+  const [lo, hi] = noteRange();
+  const p = state.notes[i] + delta;
+  if (p < lo || p > hi) return;
+  state.notes[i] = p;
+  commitNotes();
+}
+
+function select(i) {
+  if (i < 0 || i >= state.notes.length || i === state.selected) return;
+  state.selected = i;
+  render();
+}
+
+function removeSelected() {
+  const i = state.selected;
+  if (i < 0) return;
+  state.notes.splice(i, 1);
+  state.selected = state.notes.length ? Math.max(0, i - 1) : -1;
+  commitNotes();
+}
+
+function pointerOnNotes(event) {
+  const rect = noteSvg.getBoundingClientRect();
+  return [event.clientX - rect.left, event.clientY - rect.top];
+}
+
+noteSvg.addEventListener("click", (event) => {
+  if (state.mode !== Mode.EDIT || !layout) return;
+  const [x, y] = pointerOnNotes(event);
+  const i = layout.noteIndex(x);
+  const n = state.notes.length;
+  if (i >= n) addNote(n, layout.pos(y));
+  else select(Math.max(0, i));
+});
+
+noteSvg.addEventListener("pointermove", (event) => {
+  if (state.mode !== Mode.EDIT || !layout || !ghost || event.pointerType !== "mouse") return;
+  const [x, y] = pointerOnNotes(event);
+  const n = state.notes.length;
+  ghost.replaceChildren();
+  if (layout.noteIndex(x) < n || n >= NOTES_MAX) {
+    ghost.setAttribute("visibility", "hidden");
+    return;
+  }
+  const [lo, hi] = noteRange();
+  drawNote(ghost, layout, layout.noteX(n), clamp(layout.pos(y), lo, hi), "note");
+  ghost.setAttribute("visibility", "visible");
+});
+
+noteSvg.addEventListener("pointerleave", () => {
+  if (ghost) ghost.setAttribute("visibility", "hidden");
+});
+
+scroller.addEventListener("scroll", () => {
+  scroller.classList.toggle("scrolled", scroller.scrollLeft > 0);
+}, { passive: true });
+
+for (const b of modeButtons) b.addEventListener("click", () => setMode(b.dataset.mode));
+answerButtons.forEach((b, i) => b.addEventListener("click", () => answer(i)));
+
+function setReviewing(on) {
+  state.guess.reviewing = on;
+  render();
+  if (on) scroller.scrollLeft = 0;
+  $(on ? "reviewClose" : "reviewOpen").focus();
+}
+
+function newSeries() {
+  const g = state.guess;
+  if (g.history.length && !window.confirm("Commencer une nouvelle série ? Les résultats de celle-ci seront effacés.")) return;
+  clearTimeout(g.timer);
+  g.history = [];
+  g.reviewing = false;
+  newTarget();
+  save();
+  render();
+}
+
+$("reviewOpen").addEventListener("click", () => setReviewing(true));
+$("reviewClose").addEventListener("click", () => setReviewing(false));
+$("newSeriesLink").addEventListener("click", newSeries);
+$("newSeries").addEventListener("click", newSeries);
+
+for (const name of NOTE_NAMES) {
+  const cell = document.createElement("div");
+  const title = document.createElement("span");
+  const count = document.createElement("span");
+  const meter = document.createElement("span");
+  const fill = document.createElement("span");
+  cell.className = "stat";
+  title.className = "stat-name";
+  title.textContent = name[0].toUpperCase() + name.slice(1);
+  count.className = "stat-count";
+  meter.className = "meter";
+  meter.setAttribute("aria-hidden", "true");
+  meter.append(fill);
+  cell.append(title, count, meter);
+  $("perNote").append(cell);
+  statCells.push(new StatCell(count, fill));
+}
+
+$("stepUp").addEventListener("click", () => moveSelected(1));
+$("stepDown").addEventListener("click", () => moveSelected(-1));
+$("octaveUp").addEventListener("click", () => moveSelected(7));
+$("octaveDown").addEventListener("click", () => moveSelected(-7));
+$("addNote").addEventListener("click", () => {
+  const i = state.selected;
+  addNote(i + 1, i >= 0 ? state.notes[i] : DEFAULT_NOTE);
+});
+$("removeNote").addEventListener("click", removeSelected);
+$("clearNotes").addEventListener("click", () => {
+  if (!state.notes.length || !window.confirm("Effacer toutes les notes ?")) return;
+  state.notes = [];
+  state.selected = -1;
+  commitNotes();
+});
+
+$("settingsToggle").addEventListener("click", () => {
+  state.settingsOpen = !state.settingsOpen;
+  render();
+});
+$("settingsClose").addEventListener("click", () => {
+  state.settingsOpen = false;
+  render();
+  $("settingsToggle").focus();
+});
+
+for (const input of clefInputs) {
+  input.addEventListener("change", () => {
+    const id = input.dataset.clef;
+    if (input.checked) state.settings.clefs.add(id);
+    else state.settings.clefs.delete(id);
+    settingsChanged();
+  });
+}
+$("guides").addEventListener("change", (e) => {
+  state.settings.guides = e.target.checked;
+  settingsChanged();
+});
+$("showNames").addEventListener("change", (e) => {
+  state.settings.names = e.target.checked;
+  settingsChanged();
+});
+
+const steppers = [
+  ["topAdd", (s) => { if (s.top + 2 <= LINE_MAX) s.top += 2; }],
+  ["topRemove", (s) => { if (s.top - 2 >= s.bottom) s.top -= 2; }],
+  ["bottomAdd", (s) => { if (s.bottom - 2 >= LINE_MIN) s.bottom -= 2; }],
+  ["bottomRemove", (s) => { if (s.bottom + 2 <= s.top) s.bottom += 2; }],
+];
+function repeatable(button, action) {
+  let timer = 0;
+  const stop = () => clearTimeout(timer);
+  const schedule = (delay) => {
+    timer = setTimeout(() => {
+      action();
+      if (!button.disabled) schedule(REPEAT_INTERVAL);
+    }, delay);
+  };
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    stop();
+    action();
+    schedule(REPEAT_DELAY);
+  });
+  for (const type of ["pointerup", "pointerleave", "pointercancel"]) button.addEventListener(type, stop);
+  button.addEventListener("click", (event) => {
+    if (event.detail === 0) action();
+  });
+}
+
+for (const [id, change] of steppers) {
+  repeatable($(id), () => {
+    change(state.settings);
+    settingsChanged();
+  });
+}
+
+function stepButton(text, label, parent) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = text;
+  button.setAttribute("aria-label", label);
+  parent.append(button);
+  return button;
+}
+
+for (const clef of CLEFS) {
+  const grid = $("reach");
+  const name = document.createElement("span");
+  const swatch = document.createElement("span");
+  name.className = `reach-name clef-${clef.id}`;
+  swatch.className = "swatch";
+  name.append(swatch, clef.name);
+  grid.append(name);
+  for (const side of [Side.BELOW, Side.ABOVE]) {
+    const where = side === Side.BELOW ? "en dessous" : "au-dessus";
+    const mini = document.createElement("div");
+    mini.className = "mini";
+    mini.dataset.clef = clef.id;
+    mini.dataset.side = side;
+    const minus = stepButton("−", `${clef.label} : une ligne de moins ${where}`, mini);
+    const output = document.createElement("output");
+    mini.append(output);
+    const plus = stepButton("+", `${clef.label} : une ligne de plus ${where}`, mini);
+    grid.append(mini);
+    reachControls.push(new ReachControl(clef, side, name, output, minus, plus));
+    for (const [button, delta] of [[minus, -1], [plus, 1]]) {
+      repeatable(button, () => {
+        const reach = state.settings.reach.get(clef.id);
+        reach[side] = clamp(reach[side] + delta, 0, REACH_MAX);
+        settingsChanged();
+      });
+    }
+  }
+}
+$("resetSettings").addEventListener("click", () => {
+  state.settings = new Settings();
+  settingsChanged();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (activePanel() === Panel.REVIEW) {
+    if (event.key !== "Escape") return;
+    setReviewing(false);
+    event.preventDefault();
+    return;
+  }
+  if (state.mode === Mode.GUESS) {
+    const i = event.key.length === 1 ? "1234567".indexOf(event.key) : -1;
+    if (i < 0) return;
+    answer(i);
+    event.preventDefault();
+    return;
+  }
+  switch (event.key) {
+    case "ArrowUp":
+      moveSelected(event.shiftKey ? 7 : 1);
+      break;
+    case "ArrowDown":
+      moveSelected(event.shiftKey ? -7 : -1);
+      break;
+    case "ArrowLeft":
+      select(state.selected - 1);
+      break;
+    case "ArrowRight":
+      select(state.selected + 1);
+      break;
+    case "Delete":
+    case "Backspace":
+      removeSelected();
+      break;
+    default:
+      return;
+  }
+  event.preventDefault();
+});
+
+load();
+newTarget();
+new ResizeObserver(() => renderStaff()).observe(staffEl);
+render();
+</script>
+</body>
+</html>
