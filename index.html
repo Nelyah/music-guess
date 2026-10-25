@@ -10,21 +10,22 @@
 <link rel="icon" href="data:,">
 <style>
 :root {
-  --bg: #f3f0e8;
-  --surface: #ffffff;
-  --paper: #fffdf8;
-  --ink: #1d1b16;
-  --muted: #5d584d;
-  --border: #d9d3c4;
-  --control: #a8a192;
-  --staff: #2b2822;
-  --accent: #5a3fc0;
-  --accent-soft: #ece7fb;
-  --on-accent: #ffffff;
-  --ok: #1a7f37;
-  --ok-soft: #e3f4e8;
-  --ko: #b42318;
-  --ko-soft: #fbe6e3;
+  color-scheme: light dark;
+  --bg: light-dark(#f3f0e8, #121110);
+  --surface: light-dark(#ffffff, #1f1e1b);
+  --paper: light-dark(#fffdf8, #1c1b19);
+  --ink: light-dark(#1d1b16, #ece7dc);
+  --muted: light-dark(#5d584d, #b4ae9f);
+  --border: light-dark(#d9d3c4, #3a372f);
+  --control: light-dark(#a8a192, #6b6658);
+  --staff: light-dark(#2b2822, #cfc9bb);
+  --accent: light-dark(#5a3fc0, #a593f5);
+  --accent-soft: light-dark(#ece7fb, #2d2747);
+  --on-accent: light-dark(#ffffff, #16131f);
+  --ok: light-dark(#1a7f37, #5dd27a);
+  --ok-soft: light-dark(#e3f4e8, #173322);
+  --ko: light-dark(#b42318, #ff8a80);
+  --ko-soft: light-dark(#fbe6e3, #3a1c1a);
   --radius: 12px;
   --s1: 4px;
   --s2: 8px;
@@ -32,33 +33,12 @@
   --s4: 16px;
   --s5: 24px;
 }
-[data-guide="red"] { --guide: #bd3e52; }
-[data-guide="ochre"] { --guide: #986600; }
-[data-guide="green"] { --guide: #078379; }
-[data-guide="blue"] { --guide: #0077bc; }
-@media (prefers-color-scheme: dark) {
-  [data-guide="red"] { --guide: #f5848e; }
-  [data-guide="ochre"] { --guide: #dd9d35; }
-  [data-guide="green"] { --guide: #04c5b6; }
-  [data-guide="blue"] { --guide: #56b3fb; }
-  :root {
-    --bg: #121110;
-    --surface: #1f1e1b;
-    --paper: #1c1b19;
-    --ink: #ece7dc;
-    --muted: #b4ae9f;
-    --border: #3a372f;
-    --control: #6b6658;
-    --staff: #cfc9bb;
-    --accent: #a593f5;
-    --accent-soft: #2d2747;
-    --on-accent: #16131f;
-    --ok: #5dd27a;
-    --ok-soft: #173322;
-    --ko: #ff8a80;
-    --ko-soft: #3a1c1a;
-  }
-}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+[data-guide="red"] { --guide: light-dark(#bd3e52, #f5848e); }
+[data-guide="ochre"] { --guide: light-dark(#986600, #dd9d35); }
+[data-guide="green"] { --guide: light-dark(#078379, #04c5b6); }
+[data-guide="blue"] { --guide: light-dark(#0077bc, #56b3fb); }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -290,8 +270,31 @@ main.settings-open .settings { display: block; }
 main.settings-open .dock { display: none; }
 .settings-head { display: flex; align-items: center; justify-content: space-between; }
 .settings h2 { margin: 0; font-size: 17px; }
-fieldset { border: 0; margin: var(--s4) 0 0; padding: 0; }
-legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
+.group { border-top: 1px solid var(--border); }
+.settings-head + .group { margin-top: var(--s2); }
+.group[open] { padding-bottom: var(--s3); }
+.group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.group > summary::-webkit-details-marker { display: none; }
+.group > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-right: var(--s2);
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .15s;
+}
+.group[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.group > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .help { margin: 0 0 var(--s2); color: var(--muted); font-size: 14px; }
 .stepper { display: flex; align-items: center; gap: var(--s2); min-height: 48px; }
 .stepper > span { flex: 1; }
@@ -320,7 +323,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
   .mini button { width: 32px; min-height: 36px; }
 }
 .delta { color: var(--muted); font-size: 14px; }
-.settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); margin-top: var(--s4); }
+.settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 
 .staff-line, .ledger, .barline { stroke: var(--staff); }
@@ -373,10 +376,17 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
   }
   main { padding-inline: var(--s2); }
   .staff { margin-inline: calc(-1 * var(--s2)); border-inline: 0; border-radius: 0; }
-  .answer { min-height: 64px; }
+  .answers { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .answer { grid-column: span 2; min-height: 64px; }
+  .answer:nth-child(5) { grid-column: 2 / span 2; }
+}
+@media (max-width: 519px) {
+  main[data-stack="true"] .answers { display: flex; flex-direction: column-reverse; gap: 4px; }
+  main[data-stack="true"] .answer { min-height: 44px; }
+  main[data-stack="true"] .answer:disabled { display: none; }
 }
 @media (max-width: 359px) {
-  .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tally { gap: var(--s3); }
 }
@@ -398,8 +408,10 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
   }
   .dock, .settings { overflow: auto; max-height: none; }
   .dock { align-self: center; max-height: 100%; }
-  .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .answer { min-height: 48px; }
+  .answers { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .answer { grid-column: span 2; min-height: 48px; }
+  .answer:nth-child(5) { grid-column: 2 / span 2; }
+  .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tool { min-height: 48px; flex-direction: row; gap: var(--s2); }
 }
@@ -497,8 +509,8 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
       <h2>Réglages</h2>
       <button type="button" class="link settings-close" id="settingsClose">Fermer</button>
     </div>
-    <fieldset>
-      <legend>Clefs</legend>
+    <details class="group" open>
+      <summary>Clefs</summary>
       <label class="check"><input type="checkbox" data-clef="sol">Clef de sol</label>
       <label class="check"><input type="checkbox" data-clef="ut">Clef d'ut</label>
       <label class="check"><input type="checkbox" data-clef="fa">Clef de fa</label>
@@ -511,18 +523,18 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
         <label class="check" data-guide="blue"><input type="radio" name="guideColor" value="blue"><span class="swatch"></span>Bleu</label>
       </div>
       <label class="check"><input type="checkbox" id="softLines">Atténuer les autres lignes</label>
-    </fieldset>
-    <fieldset>
-      <legend>Notes à deviner</legend>
+    </details>
+    <details class="group">
+      <summary>Notes à deviner</summary>
       <p class="help">Lignes supplémentaires autorisées autour des 5 lignes de chaque clef.</p>
       <div class="reach" id="reach">
         <span></span>
         <span class="reach-head">En dessous</span>
         <span class="reach-head">Au-dessus</span>
       </div>
-    </fieldset>
-    <fieldset>
-      <legend>Intervalles</legend>
+    </details>
+    <details class="group">
+      <summary>Intervalles</summary>
       <p class="help">Intervalles proposés, montants ou descendants.</p>
       <div class="options">
         <label class="check"><input type="checkbox" data-interval="2">Seconde</label>
@@ -533,9 +545,9 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
         <label class="check"><input type="checkbox" data-interval="7">Septième</label>
         <label class="check"><input type="checkbox" data-interval="8">Octave</label>
       </div>
-    </fieldset>
-    <fieldset>
-      <legend>Lignes de la portée</legend>
+    </details>
+    <details class="group">
+      <summary>Lignes de la portée</summary>
       <div class="stepper">
         <span>En haut : <b id="topName"></b> <span class="delta" id="topDelta"></span></span>
         <button type="button" id="topRemove" aria-label="Enlever une ligne en haut">−</button>
@@ -549,7 +561,15 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
       <p class="help" id="lineCount"></p>
       <div class="row"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
       <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
-    </fieldset>
+    </details>
+    <details class="group">
+      <summary>Thème</summary>
+      <div class="options">
+        <label class="check"><input type="radio" name="theme" value="auto">Auto</label>
+        <label class="check"><input type="radio" name="theme" value="light">Clair</label>
+        <label class="check"><input type="radio" name="theme" value="dark">Sombre</label>
+      </div>
+    </details>
     <div class="settings-foot">
       <button type="button" class="link" id="resetSettings">Réglages par défaut</button>
       <p class="credit">Symboles musicaux : police Bravura, SIL Open Font License 1.1.</p>
@@ -563,6 +583,7 @@ const Mode = Object.freeze({ NOTES: "guess", INTERVALS: "interval", EDIT: "edit"
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
 const GuideColor = Object.freeze({ RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
+const Theme = Object.freeze({ AUTO: "auto", LIGHT: "light", DARK: "dark" });
 const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
@@ -605,6 +626,9 @@ const CLOCK_TICK = 100;
 const REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 90;
 const SPACE_MAX = 34;
+const STACK_ROW = 44;
+const STACK_GAP = 4;
+const STACK_STAFF_MIN = 200;
 
 const GLYPHS = Object.freeze({
   gClef: "M376 415C374 427 376 428 382 434C398 449 419 470 438 491C522 583 572 702 572 815C572 902 548 988 507 1048C492 1070 466 1098 455 1098C441 1098 410 1072 390 1050C316 968 292 843 292 739C292 681 299 616 306 575C308 563 309 561 297 551C233 498 164 437 112 373C43 287 0 194 0 87C0 -87 119 -252 364 -252C387 -252 413 -250 433 -246C444 -244 446 -243 448 -255C460 -322 475 -409 475 -456C475 -604 375 -622 316 -622C262 -622 236 -606 236 -593C236 -586 245 -583 268 -576C299 -567 335 -540 335 -482C335 -427 300 -380 239 -380C172 -380 132 -433 132 -495C132 -560 171 -658 322 -658C389 -658 519 -628 519 -458C519 -401 501 -306 490 -244C488 -232 489 -233 503 -227C604 -187 671 -102 671 11C671 139 577 252 430 252C404 252 404 252 401 270ZM470 943C503 943 530 916 530 861C530 792 497 728 419 650C403 634 379 611 356 591C349 585 345 586 343 599C339 625 337 659 337 691C337 847 409 943 470 943ZM361 262C364 243 364 244 346 238C258 208 201 129 201 44C201 -46 248 -110 316 -133C324 -136 336 -139 343 -139C351 -139 355 -134 355 -128C355 -121 347 -118 340 -115C298 -97 268 -54 268 -8C268 49 307 92 368 109C384 113 386 112 388 101L438 -197C440 -208 439 -208 424 -211C408 -214 388 -216 368 -216C193 -216 80 -119 80 20C80 79 90 158 173 252C233 319 279 356 326 394C336 402 338 401 340 390ZM430 103C428 115 429 118 441 117C522 110 589 42 589 -46C589 -109 551 -160 495 -188C483 -194 481 -194 479 -182Z",
@@ -643,7 +667,7 @@ class Reach {
 
 class Settings {
   constructor() {
-    this.clefs = new Set(Object.values(ClefId));
+    this.clefs = new Set([ClefId.SOL, ClefId.FA]);
     this.top = DEFAULT_TOP;
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
@@ -652,6 +676,7 @@ class Settings {
     this.softLines = false;
     this.names = false;
     this.intervals = new Set(INTERVALS);
+    this.theme = Theme.AUTO;
   }
 
   toJSON() {
@@ -665,6 +690,7 @@ class Settings {
       softLines: this.softLines,
       names: this.names,
       intervals: [...this.intervals],
+      theme: this.theme,
     };
   }
 
@@ -689,6 +715,7 @@ class Settings {
     if (Object.values(GuideColor).includes(raw.guideColor)) s.guideColor = raw.guideColor;
     if (typeof raw.softLines === "boolean") s.softLines = raw.softLines;
     if (typeof raw.names === "boolean") s.names = raw.names;
+    if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
     if (Array.isArray(raw.intervals)) {
       const intervals = new Set(raw.intervals.filter((n) => INTERVALS.includes(n)));
       if (intervals.size) s.intervals = intervals;
@@ -967,11 +994,13 @@ const dock = document.querySelector(".dock");
 const scroller = $("scroller");
 const clefSvg = $("clefSvg");
 const noteSvg = $("noteSvg");
-const answerButtons = [...document.querySelectorAll(".answer")];
+const answersEl = document.getElementById("answers");
+const answerButtons = [...answersEl.querySelectorAll(".answer")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
 const clefInputs = [...document.querySelectorAll("input[data-clef]")];
 const guideColorInputs = [...document.querySelectorAll("input[name=guideColor]")];
 const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
+const themeInputs = [...document.querySelectorAll("input[name=theme]")];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const mod7 = (p) => ((p % 7) + 7) % 7;
@@ -1425,6 +1454,8 @@ function renderPanels() {
     input.checked = st.clefs.has(clef.id) && lineAvailable(clef);
   }
   $("guides").checked = st.guides;
+  document.documentElement.dataset.theme = st.theme;
+  for (const input of themeInputs) input.checked = input.value === st.theme;
   app.dataset.guide = st.guideColor;
   for (const input of guideColorInputs) {
     input.checked = input.value === st.guideColor;
@@ -1502,14 +1533,23 @@ function renderPanels() {
 
 function render() {
   renderPanels();
+  fitAnswers();
   renderStaff();
   reveal();
   syncClock();
 }
 
+function fitAnswers() {
+  if (answersEl.offsetParent === null) return;
+  const rows = answerButtons.filter((b) => !b.disabled).length;
+  const column = rows * STACK_ROW + (rows - 1) * STACK_GAP;
+  const spare = staffEl.clientHeight + answersEl.offsetHeight - column;
+  app.dataset.stack = String(state.mode === Mode.INTERVALS && spare >= STACK_STAFF_MIN);
+}
+
 function syncClock() {
   const g = state.guess;
-  const showing = document.visibilityState === "visible" && answerButtons[0].offsetParent !== null;
+  const showing = document.visibilityState === "visible" && answersEl.offsetParent !== null;
   const running = showing && activePanel() === Panel.GUESS && g.target !== null && !g.answered;
   for (const other of state.guesses) {
     other.clock.run(running && other === g);
@@ -1848,6 +1888,12 @@ for (const input of clefInputs) {
     settingsChanged();
   });
 }
+for (const input of themeInputs) {
+  input.addEventListener("change", () => {
+    state.settings.theme = input.value;
+    settingsChanged();
+  });
+}
 for (const input of guideColorInputs) {
   input.addEventListener("change", () => {
     state.settings.guideColor = input.value;
@@ -2009,7 +2055,10 @@ document.addEventListener("keydown", (event) => {
 
 load();
 newTarget();
-new ResizeObserver(() => renderStaff()).observe(staffEl);
+new ResizeObserver(() => {
+  fitAnswers();
+  renderStaff();
+}).observe(staffEl);
 render();
 </script>
 </body>
