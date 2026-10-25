@@ -32,15 +32,15 @@
   --s4: 16px;
   --s5: 24px;
 }
-[data-guide="red"] { --guide: #aa3f4e; }
-[data-guide="ochre"] { --guide: #8d5e00; }
-[data-guide="green"] { --guide: #007a70; }
-[data-guide="blue"] { --guide: #006eae; }
+[data-guide="red"] { --guide: #bd3e52; }
+[data-guide="ochre"] { --guide: #986600; }
+[data-guide="green"] { --guide: #078379; }
+[data-guide="blue"] { --guide: #0077bc; }
 @media (prefers-color-scheme: dark) {
-  [data-guide="red"] { --guide: #ec8a92; }
-  [data-guide="ochre"] { --guide: #d79f4c; }
-  [data-guide="green"] { --guide: #31c3b5; }
-  [data-guide="blue"] { --guide: #65b2f1; }
+  [data-guide="red"] { --guide: #f5848e; }
+  [data-guide="ochre"] { --guide: #dd9d35; }
+  [data-guide="green"] { --guide: #04c5b6; }
+  [data-guide="blue"] { --guide: #56b3fb; }
   :root {
     --bg: #121110;
     --surface: #1f1e1b;
@@ -138,16 +138,20 @@ main {
   border-radius: var(--radius);
   overflow: hidden;
 }
-.progress {
+main[data-panel="guess"][data-awaiting="true"] .staff { cursor: pointer; }
+.tap-hint {
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
+  bottom: var(--s3);
   z-index: 2;
-  height: 4px;
-  background: var(--border);
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+  pointer-events: none;
+  animation: fade .3s ease-out;
 }
-.progress span { display: block; height: 100%; background: var(--accent); transition: width .2s ease-out; }
 .scroller {
   position: absolute;
   inset: 0;
@@ -168,6 +172,27 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .feedback:focus { outline: none; }
 .feedback.ok { color: var(--ok); }
 .feedback.ko { color: var(--ko); }
+.feedback.past { color: var(--muted); font-weight: 500; }
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.status b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.pips { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.pips[hidden] { display: none; }
+.pips span { flex: 1 1 0; max-width: 20px; height: 8px; border-radius: 4px; background: var(--border); transition: background-color .15s; }
+.pips .ok { background: var(--ok); }
+.pips .ko { background: var(--ko); }
+.pips .now { background: var(--accent); }
+.tally { flex: 1; display: flex; gap: var(--s4); }
+.tally[hidden] { display: none; }
+.tally .ok b { color: var(--ok); }
+.tally .ko b { color: var(--ko); }
+.clock { margin-left: auto; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hint { color: var(--muted); font-size: 15px; }
 .answers { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .answer {
@@ -190,17 +215,8 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 }
 .answer.correct { background: var(--ok-soft); border: 2px solid var(--ok); color: var(--ok); }
 .answer.wrong { background: var(--ko-soft); border: 2px solid var(--ko); color: var(--ko); animation: shake .25s; }
-.score {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: var(--s1) var(--s4);
-  color: var(--muted);
-  font-size: 15px;
-}
-.score b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; }
+.guess-panel > .links { justify-content: space-between; margin: calc(-1 * var(--s2)) calc(-1 * var(--s2)) calc(-1 * var(--s1)); }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .tile {
   display: flex;
@@ -304,13 +320,14 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 
 .staff-line, .ledger, .barline { stroke: var(--staff); }
+main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--staff) 60%, var(--paper)); }
 .ref-line { stroke: var(--guide); }
 .clef-glyph { fill: var(--ink); }
 .note .head { fill: var(--ink); }
 .note.is-selected .head { fill: var(--accent); }
 .note.is-correct .head { fill: var(--ok); }
 .note.is-wrong .head { fill: var(--ko); }
-.note.fresh { animation: fade .18s ease-out; }
+.note.fresh { animation: fade .1s ease-out; }
 .sel-col { fill: var(--accent-soft); }
 .ghost { opacity: .35; pointer-events: none; }
 .label {
@@ -341,11 +358,14 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
     clip: rect(0 0 0 0); white-space: nowrap;
   }
   .modes button { min-width: 80px; }
+  main { padding-inline: var(--s2); }
+  .staff { margin-inline: calc(-1 * var(--s2)); border-inline: 0; border-radius: 0; }
+  .answer { min-height: 64px; }
 }
 @media (max-width: 359px) {
   .answers, .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .score { gap: var(--s1) var(--s3); }
+  .tally { gap: var(--s3); }
 }
 @media (min-width: 960px) and (min-height: 560px) {
   main {
@@ -383,14 +403,28 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 </header>
 <main id="app" data-mode="guess" data-guide="red">
   <div class="staff" id="staff">
-    <div class="progress" id="progress" aria-hidden="true" hidden><span id="progressFill"></span></div>
     <div class="scroller" id="scroller">
       <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
       <svg id="noteSvg" class="notes" role="img" aria-label="Portée"></svg>
     </div>
+    <p class="tap-hint" id="tapHint" hidden>Touche pour continuer</p>
   </div>
   <section class="dock" aria-label="Commandes">
     <div class="panel guess-panel">
+      <div class="links">
+        <button type="button" class="link" id="reviewOpen">Voir le bilan</button>
+        <button type="button" class="link" id="newSeriesLink">Nouvelle série</button>
+      </div>
+      <div class="status">
+        <span id="scoreProgress" hidden>Note <b id="scoreNote"></b></span>
+        <span class="pips" id="pips" aria-hidden="true" hidden></span>
+        <span class="tally" id="tally">
+          <span class="ok">✓ <b id="scoreOk">0</b><span class="sr-only"> réussies</span></span>
+          <span class="ko">✗ <b id="scoreKo">0</b><span class="sr-only"> erreurs</span></span>
+          <span>D'affilée <b id="scoreStreak">0</b></span>
+        </span>
+        <span class="clock" id="clock"></span>
+      </div>
       <p class="feedback" id="feedback" aria-live="polite" tabindex="-1"></p>
       <div class="answers" id="answers" role="group" aria-label="Réponses">
         <button type="button" class="answer" data-note="0">Do<kbd>1</kbd></button>
@@ -400,16 +434,6 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
         <button type="button" class="answer" data-note="4">Sol<kbd>5</kbd></button>
         <button type="button" class="answer" data-note="5">La<kbd>6</kbd></button>
         <button type="button" class="answer" data-note="6">Si<kbd>7</kbd></button>
-      </div>
-      <div class="score">
-        <span id="scoreProgress" hidden>Note <b id="scoreNote"></b></span>
-        <span>Réussies <b id="scoreOk">0</b></span>
-        <span>Erreurs <b id="scoreKo">0</b></span>
-        <span>D'affilée <b id="scoreStreak">0</b></span>
-        <span class="links">
-          <button type="button" class="link" id="reviewOpen">Voir le bilan</button>
-          <button type="button" class="link" id="newSeriesLink">Nouvelle série</button>
-        </span>
       </div>
     </div>
     <div class="panel setup-panel">
@@ -428,7 +452,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
       <div class="tiles">
         <div class="tile"><b id="statScore"></b><span>réussies</span></div>
         <div class="tile"><b id="statBest"></b><span>meilleure suite</span></div>
-        <div class="tile"><b id="statTime"></b><span>durée</span></div>
+        <div class="tile"><b id="statTime"></b><span>chrono</span></div>
         <div class="tile"><b id="statPace"></b><span>par note</span></div>
       </div>
       <div class="per-note" id="perNote"></div>
@@ -472,6 +496,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
         <label class="check" data-guide="green"><input type="radio" name="guideColor" value="green"><span class="swatch"></span>Vert</label>
         <label class="check" data-guide="blue"><input type="radio" name="guideColor" value="blue"><span class="swatch"></span>Bleu</label>
       </div>
+      <label class="check"><input type="checkbox" id="softLines">Atténuer les autres lignes</label>
     </fieldset>
     <fieldset>
       <legend>Notes à deviner</legend>
@@ -532,6 +557,9 @@ const NOTEHEAD_WIDTH = 1.688;
 const LEDGER_EXTENSION = 0.4;
 const CLEF_LEFT = 0.6;
 const CLEF_COLUMN = 4.2;
+const CLEF_TIGHT = 0.7;
+const GUESS_LEFT = 1.9;
+const GUESS_RIGHT = 4.2;
 const NOTE_PAD = 1;
 const NOTE_COLUMN = 3.2;
 const EDIT_VISIBLE_COLUMNS = 4;
@@ -540,9 +568,9 @@ const REVIEW_ROW = 1.4;
 const REVIEW_VISIBLE_COLUMNS = 10;
 const REVIEW_SPACE_MIN = 8;
 const SPACE_MIN = 10;
-const FEEDBACK_RIGHT = 600;
-const FEEDBACK_WRONG = 1200;
-const SKIP_AFTER = 250;
+const FEEDBACK_RIGHT = 200;
+const CONTINUE_AFTER = 300;
+const CLOCK_TICK = 100;
 const REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 90;
 const SPACE_MAX = 34;
@@ -590,6 +618,7 @@ class Settings {
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
     this.guides = true;
     this.guideColor = GuideColor.RED;
+    this.softLines = false;
     this.names = false;
   }
 
@@ -601,6 +630,7 @@ class Settings {
       reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
       guides: this.guides,
       guideColor: this.guideColor,
+      softLines: this.softLines,
       names: this.names,
     };
   }
@@ -624,6 +654,7 @@ class Settings {
     }
     if (typeof raw.guides === "boolean") s.guides = raw.guides;
     if (Object.values(GuideColor).includes(raw.guideColor)) s.guideColor = raw.guideColor;
+    if (typeof raw.softLines === "boolean") s.softLines = raw.softLines;
     if (typeof raw.names === "boolean") s.names = raw.names;
     return s;
   }
@@ -676,8 +707,18 @@ class Guess {
     this.choosing = false;
     this.reviewing = false;
     this.timer = 0;
+    this.tick = 0;
     this.answeredAt = 0;
     this.clock = new Stopwatch();
+  }
+
+  get awaiting() {
+    return this.answered && !this.right;
+  }
+
+  get spent() {
+    const past = this.history.reduce((sum, a) => sum + (a.ms ?? 0), 0);
+    return past + (this.answered ? 0 : this.clock.ms);
   }
 
   get full() {
@@ -729,10 +770,11 @@ class StatCell {
 }
 
 class Layout {
-  constructor(s, topStep, height, clefWidth, columnX, notesWidth, labelY) {
+  constructor(s, topStep, height, clefScale, clefWidth, columnX, notesWidth, labelY) {
     this.s = s;
     this.topStep = topStep;
     this.height = height;
+    this.clefScale = clefScale;
     this.clefWidth = clefWidth;
     this.columnX = columnX;
     this.notesWidth = notesWidth;
@@ -904,27 +946,30 @@ function computeLayout() {
   const columnar = panel === Panel.EDIT || panel === Panel.REVIEW;
   const labelSpaces = labelHeight(panel);
   const columns = [0, 1].filter((col) => visible.some((c) => c.column === col));
-  const clefSpaces = CLEF_LEFT + columns.length * CLEF_COLUMN;
+  const clefSpacesAt = (scale) => CLEF_LEFT + columns.length * CLEF_COLUMN * scale;
   const heightSpaces = (topStep - bottomStep) / 2 + labelSpaces;
   const noteCount = panel === Panel.EDIT ? state.notes.length + 1 : history.length;
-  const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * NOTE_COLUMN : 6;
+  const guessSpaces = GUESS_LEFT + GUESS_RIGHT;
+  const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * NOTE_COLUMN : guessSpaces;
   const reviewing = panel === Panel.REVIEW;
   const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, REVIEW_VISIBLE_COLUMNS) : EDIT_VISIBLE_COLUMNS;
-  const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * NOTE_COLUMN : 5;
+  const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * NOTE_COLUMN : guessSpaces;
   const spaceMin = reviewing ? REVIEW_SPACE_MIN : SPACE_MIN;
   const w = staffEl.clientWidth;
   const h = staffEl.clientHeight;
+  const clefScale = w / (clefSpacesAt(1) + minNotesSpaces) < h / heightSpaces ? CLEF_TIGHT : 1;
+  const clefSpaces = clefSpacesAt(clefScale);
   const fit = (avail) => clamp(Math.min(avail / heightSpaces, w / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX);
 
   let s = fit(h);
   if (columnar && SCROLLBAR > 0 && (clefSpaces + notesSpaces) * s > w) s = fit(h - SCROLLBAR);
 
   const clefWidth = Math.round(clefSpaces * s);
-  const columnX = new Map(columns.map((col, i) => [col, (CLEF_LEFT + i * CLEF_COLUMN) * s]));
+  const columnX = new Map(columns.map((col, i) => [col, (CLEF_LEFT + i * CLEF_COLUMN * clefScale) * s]));
   const notesWidth = Math.max(w - clefWidth, Math.ceil(notesSpaces * s));
   const staffHeight = ((topStep - bottomStep) * s) / 2;
   const labelY = staffHeight + 1.3 * s;
-  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefWidth, columnX, notesWidth, labelY);
+  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefScale, clefWidth, columnX, notesWidth, labelY);
 }
 
 function glyph(parent, d, x, y, s, cls) {
@@ -952,7 +997,7 @@ function drawClefs(L) {
   svgEl("line", { x1: barX, x2: barX, y1: L.y(st.top), y2: L.y(st.bottom), class: "barline", "stroke-width": L.lineWidth }, clefSvg);
   for (const c of visibleClefs()) {
     const x = L.columnX.get(c.column);
-    glyph(clefSvg, c.glyph, x + 0.65 * L.s, L.y(c.line), L.s, "clef-glyph");
+    glyph(clefSvg, c.glyph, x + 0.65 * L.clefScale * L.s, L.y(c.line), L.clefScale * L.s, "clef-glyph");
   }
 }
 
@@ -992,7 +1037,7 @@ function strike(parent, node, L) {
 function drawGuess(L) {
   const g = state.guess;
   if (g.target === null) return;
-  const x = Math.min(L.notesWidth / 2, L.notesWidth - 4 * L.s);
+  const x = clamp(L.notesWidth / 2, GUESS_LEFT * L.s, L.notesWidth - GUESS_RIGHT * L.s);
   const status = g.answered ? (g.right ? "is-correct" : "is-wrong") : "";
   drawNote(noteSvg, L, x, g.target, `note ${status}${g.fresh ? " fresh" : ""}`);
   g.fresh = false;
@@ -1063,14 +1108,21 @@ function renderStaff() {
   }
 }
 
+function attemptSummary(a) {
+  const name = noteName(a.target);
+  const text = `${a.right ? "✓" : "✗"} ${name[0].toUpperCase()}${name.slice(1)}`;
+  return a.ms === null ? text : `${text} · ${formatSeconds(a.ms)}`;
+}
+
 function guessMessage() {
   const g = state.guess;
+  const last = g.history.at(-1);
   if (g.answered) {
-    const name = noteName(g.target);
-    if (g.right) return [`✓ Bravo, c'est un ${name} !`, "ok"];
-    return [`✗ C'est un ${name}, pas un ${NOTE_NAMES[g.answer]}.`, "ko"];
+    if (g.right) return [attemptSummary(last), "ok"];
+    return [`✗ C'est un ${noteName(g.target)}, pas un ${NOTE_NAMES[g.answer]}.`, "ko"];
   }
   if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
+  if (last) return [attemptSummary(last), "past"];
   return ["Quelle est cette note ?", ""];
 }
 
@@ -1144,6 +1196,31 @@ function renderReview() {
   });
 }
 
+function renderPips() {
+  const g = state.guess;
+  const pips = $("pips");
+  pips.hidden = g.length === FREE_SERIES;
+  if (pips.hidden) return;
+  const current = g.answered ? -1 : g.history.length;
+  pips.replaceChildren(...Array.from({ length: g.length }, (_, i) => {
+    const pip = document.createElement("span");
+    const a = g.history[i];
+    if (a) pip.className = a.right ? "ok" : "ko";
+    else if (i === current) pip.className = "now";
+    return pip;
+  }));
+}
+
+function renderClock() {
+  const g = state.guess;
+  if (g.length !== FREE_SERIES) {
+    $("clock").textContent = formatDuration(g.spent);
+    return;
+  }
+  const pace = meanTime(g.history);
+  $("clock").textContent = pace === null ? "" : `moy. ${formatSeconds(pace)}`;
+}
+
 function formatDelta(n) {
   if (n === 0) return "";
   return `(${n > 0 ? "+" : "−"}${Math.abs(n)})`;
@@ -1168,6 +1245,9 @@ function renderPanels() {
     input.checked = input.value === st.guideColor;
     input.disabled = !st.guides;
   }
+  $("softLines").checked = st.softLines;
+  $("softLines").disabled = !st.guides;
+  app.dataset.softLines = String(st.guides && st.softLines);
   $("showNames").checked = st.names;
   $("topName").textContent = noteName(st.top);
   $("bottomName").textContent = noteName(st.bottom);
@@ -1199,13 +1279,17 @@ function renderPanels() {
     b.classList.toggle("correct", g.answered && i === mod7(g.target));
     b.classList.toggle("wrong", g.answered && i === g.answer && !g.right);
   });
+  const fixed = g.length !== FREE_SERIES;
+  app.dataset.awaiting = String(g.awaiting);
+  $("tapHint").hidden = !g.awaiting || activePanel() !== Panel.GUESS;
   $("scoreOk").textContent = String(g.ok);
   $("scoreKo").textContent = String(g.ko);
   $("scoreStreak").textContent = String(g.streak);
-  $("scoreProgress").hidden = g.length === FREE_SERIES;
-  $("progress").hidden = g.length === FREE_SERIES || activePanel() !== Panel.GUESS;
-  $("progressFill").style.width = `${(100 * Math.min(g.history.length, g.length)) / (g.length || 1)}%`;
+  $("tally").hidden = fixed;
+  $("scoreProgress").hidden = !fixed;
   $("scoreNote").textContent = `${Math.min(g.length, g.history.length + (g.answered ? 0 : 1))}/${g.length}`;
+  renderPips();
+  renderClock();
   $("reviewOpen").disabled = !g.history.length;
   $("reviewClose").textContent = g.complete ? `Encore ${g.length} notes` : "Continuer";
   $("setupHint").textContent = setupMessage();
@@ -1235,7 +1319,10 @@ function render() {
 function syncClock() {
   const g = state.guess;
   const showing = document.visibilityState === "visible" && answerButtons[0].offsetParent !== null;
-  g.clock.run(showing && activePanel() === Panel.GUESS && g.target !== null && !g.answered);
+  const running = showing && activePanel() === Panel.GUESS && g.target !== null && !g.answered;
+  g.clock.run(running);
+  clearInterval(g.tick);
+  if (running && g.length !== FREE_SERIES) g.tick = setInterval(renderClock, CLOCK_TICK);
 }
 
 function save() {
@@ -1316,7 +1403,7 @@ function answer(i) {
   const g = state.guess;
   if (activePanel() !== Panel.GUESS || g.target === null) return;
   if (g.answered) {
-    if (performance.now() - g.answeredAt >= SKIP_AFTER) advance();
+    proceed();
     return;
   }
   g.answer = i;
@@ -1325,7 +1412,13 @@ function answer(i) {
   save();
   render();
   g.answeredAt = performance.now();
-  g.timer = setTimeout(advance, g.right ? FEEDBACK_RIGHT : FEEDBACK_WRONG);
+  if (g.right) g.timer = setTimeout(advance, FEEDBACK_RIGHT);
+}
+
+function proceed() {
+  const g = state.guess;
+  if (activePanel() !== Panel.GUESS || !g.awaiting) return;
+  if (performance.now() - g.answeredAt >= CONTINUE_AFTER) advance();
 }
 
 function advance() {
@@ -1352,7 +1445,7 @@ function setMode(mode) {
   state.mode = mode;
   g.reviewing = false;
   g.choosing = false;
-  if (mode === Mode.GUESS) newTarget();
+  if (mode === Mode.GUESS && (g.target === null || g.answered)) newTarget();
   save();
   render();
 }
@@ -1431,6 +1524,10 @@ noteSvg.addEventListener("pointermove", (event) => {
 
 noteSvg.addEventListener("pointerleave", () => {
   if (ghost) ghost.setAttribute("visibility", "hidden");
+});
+
+staffEl.addEventListener("click", () => {
+  if (state.mode === Mode.GUESS) proceed();
 });
 
 scroller.addEventListener("scroll", () => {
@@ -1552,6 +1649,10 @@ $("guides").addEventListener("change", (e) => {
   state.settings.guides = e.target.checked;
   settingsChanged();
 });
+$("softLines").addEventListener("change", (e) => {
+  state.settings.softLines = e.target.checked;
+  settingsChanged();
+});
 $("showNames").addEventListener("change", (e) => {
   state.settings.names = e.target.checked;
   settingsChanged();
@@ -1653,6 +1754,12 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (state.mode === Mode.GUESS) {
+    const onControl = event.target instanceof Element && event.target.closest("input, label, button:not(.answer)");
+    if ((event.key === " " || event.key === "Enter") && state.guess.awaiting && !onControl) {
+      proceed();
+      event.preventDefault();
+      return;
+    }
     const i = event.key.length === 1 ? "1234567".indexOf(event.key) : -1;
     if (i < 0) return;
     answer(i);
