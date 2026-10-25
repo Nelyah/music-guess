@@ -111,6 +111,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 .modes button { border: 0; min-width: 88px; font-weight: 600; background: transparent; }
 .modes button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.settings-toggle { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.settings-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .link {
   border: 0;
   background: transparent;
@@ -202,6 +204,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
   font-size: 18px;
   font-weight: 650;
 }
+.answer sup, .stat-name sup { font-size: .62em; line-height: 0; }
 .answer kbd { display: none; }
 @media (hover: hover) and (pointer: fine) {
   .answer kbd {
@@ -245,6 +248,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+.stat[hidden] { display: none; }
 .stat-name { font-weight: 650; }
 .stat-count { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .stat-time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -272,7 +276,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
 .swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--guide); flex: none; }
-.colors { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
+.colors, .options { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
 .settings {
   display: none;
   background: var(--surface);
@@ -352,12 +356,21 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-@media (max-width: 519px) {
+@media (max-width: 679px) {
   .bar h1 {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip: rect(0 0 0 0); white-space: nowrap;
   }
-  .modes button { min-width: 80px; }
+}
+@media (max-width: 519px) {
+  .bar { padding-inline: var(--s2); gap: var(--s2); }
+  .modes { flex: 1; }
+  .modes button { flex: 1 1 auto; min-width: 0; padding: 0 var(--s2); }
+  .settings-toggle { width: 44px; padding: 0; }
+  .settings-toggle span {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
   main { padding-inline: var(--s2); }
   .staff { margin-inline: calc(-1 * var(--s2)); border-inline: 0; border-radius: 0; }
   .answer { min-height: 64px; }
@@ -396,10 +409,11 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
 <header class="bar">
   <h1>Lecture des clefs</h1>
   <div class="modes" role="group" aria-label="Mode">
-    <button type="button" data-mode="guess" aria-pressed="true">Deviner</button>
+    <button type="button" data-mode="guess" aria-pressed="true">Notes</button>
+    <button type="button" data-mode="interval" aria-pressed="false">Intervalles</button>
     <button type="button" data-mode="edit" aria-pressed="false">Écrire</button>
   </div>
-  <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings">Réglages</button>
+  <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Réglages</span></button>
 </header>
 <main id="app" data-mode="guess" data-guide="red">
   <div class="staff" id="staff">
@@ -416,10 +430,10 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
         <button type="button" class="link" id="newSeriesLink">Nouvelle série</button>
       </div>
       <div class="status">
-        <span id="scoreProgress" hidden>Note <b id="scoreNote"></b></span>
+        <span id="scoreProgress" hidden><span id="scoreUnit">Note</span> <b id="scoreNote"></b></span>
         <span class="pips" id="pips" aria-hidden="true" hidden></span>
         <span class="tally" id="tally">
-          <span class="ok">✓ <b id="scoreOk">0</b><span class="sr-only"> réussies</span></span>
+          <span class="ok">✓ <b id="scoreOk">0</b><span class="sr-only" id="tallyDone"> réussies</span></span>
           <span class="ko">✗ <b id="scoreKo">0</b><span class="sr-only"> erreurs</span></span>
           <span>D'affilée <b id="scoreStreak">0</b></span>
         </span>
@@ -450,10 +464,10 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
     <div class="panel review-panel">
       <p class="hint" id="reviewHint"></p>
       <div class="tiles">
-        <div class="tile"><b id="statScore"></b><span>réussies</span></div>
+        <div class="tile"><b id="statScore"></b><span id="statScoreLabel">réussies</span></div>
         <div class="tile"><b id="statBest"></b><span>meilleure suite</span></div>
         <div class="tile"><b id="statTime"></b><span>chrono</span></div>
-        <div class="tile"><b id="statPace"></b><span>par note</span></div>
+        <div class="tile"><b id="statPace"></b><span id="statPaceLabel">par note</span></div>
       </div>
       <div class="per-note" id="perNote"></div>
       <p class="hint confusions" id="confusions"></p>
@@ -508,6 +522,19 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
       </div>
     </fieldset>
     <fieldset>
+      <legend>Intervalles</legend>
+      <p class="help">Intervalles proposés, montants ou descendants.</p>
+      <div class="options">
+        <label class="check"><input type="checkbox" data-interval="2">Seconde</label>
+        <label class="check"><input type="checkbox" data-interval="3">Tierce</label>
+        <label class="check"><input type="checkbox" data-interval="4">Quarte</label>
+        <label class="check"><input type="checkbox" data-interval="5">Quinte</label>
+        <label class="check"><input type="checkbox" data-interval="6">Sixte</label>
+        <label class="check"><input type="checkbox" data-interval="7">Septième</label>
+        <label class="check"><input type="checkbox" data-interval="8">Octave</label>
+      </div>
+    </fieldset>
+    <fieldset>
       <legend>Lignes de la portée</legend>
       <div class="stepper">
         <span>En haut : <b id="topName"></b> <span class="delta" id="topDelta"></span></span>
@@ -532,13 +559,16 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
 <script>
 "use strict";
 
-const Mode = Object.freeze({ GUESS: "guess", EDIT: "edit" });
+const Mode = Object.freeze({ NOTES: "guess", INTERVALS: "interval", EDIT: "edit" });
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
 const GuideColor = Object.freeze({ RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
 const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
+const INTERVAL_NAMES = ["seconde", "tierce", "quarte", "quinte", "sixte", "septième", "octave"];
+const INTERVAL_SHORT = ["2de", "3ce", "4te", "5te", "6te", "7e", "8ve"];
+const INTERVALS = [2, 3, 4, 5, 6, 7, 8];
 const LINE_MIN = 0;
 const LINE_MAX = 62;
 const DEFAULT_TOP = 38;
@@ -562,6 +592,7 @@ const GUESS_LEFT = 1.9;
 const GUESS_RIGHT = 4.2;
 const NOTE_PAD = 1;
 const NOTE_COLUMN = 3.2;
+const INTERVAL_GAP = 2.8;
 const EDIT_VISIBLE_COLUMNS = 4;
 const LABEL_ROW = 2.2;
 const REVIEW_ROW = 1.4;
@@ -620,6 +651,7 @@ class Settings {
     this.guideColor = GuideColor.RED;
     this.softLines = false;
     this.names = false;
+    this.intervals = new Set(INTERVALS);
   }
 
   toJSON() {
@@ -632,6 +664,7 @@ class Settings {
       guideColor: this.guideColor,
       softLines: this.softLines,
       names: this.names,
+      intervals: [...this.intervals],
     };
   }
 
@@ -656,19 +689,111 @@ class Settings {
     if (Object.values(GuideColor).includes(raw.guideColor)) s.guideColor = raw.guideColor;
     if (typeof raw.softLines === "boolean") s.softLines = raw.softLines;
     if (typeof raw.names === "boolean") s.names = raw.names;
+    if (Array.isArray(raw.intervals)) {
+      const intervals = new Set(raw.intervals.filter((n) => INTERVALS.includes(n)));
+      if (intervals.size) s.intervals = intervals;
+    }
     return s;
   }
 }
 
+class QuizWords {
+  constructor(unit, one, done, article, question, howMany, none) {
+    this.unit = unit;
+    this.one = one;
+    this.done = done;
+    this.article = article;
+    this.question = question;
+    this.howMany = howMany;
+    this.none = none;
+  }
+}
+
+class Quiz {
+  constructor(mode, names, short, keys, size, words) {
+    this.mode = mode;
+    this.names = names;
+    this.short = short;
+    this.keys = keys;
+    this.size = size;
+    this.words = words;
+  }
+
+  enabled() {
+    return true;
+  }
+
+  readable(target) {
+    if (!Array.isArray(target) || target.length !== this.size || !target.every(Number.isInteger)) return false;
+    const solution = this.solution(target);
+    return solution >= 0 && solution < this.names.length;
+  }
+
+  valid(target) {
+    const positions = guessPositions();
+    return target.every((p) => positions.includes(p)) && this.enabled(this.solution(target));
+  }
+}
+
+class NoteQuiz extends Quiz {
+  constructor() {
+    super(Mode.NOTES, NOTE_NAMES, NOTE_NAMES, "1234567", 1,
+      new QuizWords("note", "une", "réussie", "un", "Quelle est cette note ?", "Combien de notes ?", "Aucune note devinée dans cette série."));
+  }
+
+  solution([p]) {
+    return mod7(p);
+  }
+
+  pick(previous) {
+    const all = guessPositions();
+    const candidates = all.length > 1 ? all.filter((p) => p !== previous?.[0]) : all;
+    return [sample(candidates)];
+  }
+}
+
+class IntervalQuiz extends Quiz {
+  constructor() {
+    super(Mode.INTERVALS, INTERVAL_NAMES, INTERVAL_SHORT, "2345678", 2,
+      new QuizWords("intervalle", "un", "réussi", "une", "Quel est cet intervalle ?", "Combien d'intervalles ?", "Aucun intervalle deviné dans cette série."));
+  }
+
+  solution([a, b]) {
+    return Math.abs(b - a) - 1;
+  }
+
+  enabled(i) {
+    return state.settings.intervals.has(INTERVALS[i]);
+  }
+
+  pick(previous) {
+    const positions = new Set(guessPositions());
+    const n = sample(INTERVALS.filter((size) => state.settings.intervals.has(size)));
+    const pairs = [];
+    for (const a of positions) {
+      if (positions.has(a + n - 1)) pairs.push([a, a + n - 1], [a + n - 1, a]);
+    }
+    const others = pairs.filter(([a, b]) => !previous || a !== previous[0] || b !== previous[1]);
+    return sample(others.length ? others : pairs);
+  }
+}
+
+const QUIZZES = [new NoteQuiz(), new IntervalQuiz()];
+
 class Attempt {
-  constructor(target, answer, ms = null) {
+  constructor(quiz, target, answer, ms = null) {
+    this.quiz = quiz;
     this.target = target;
     this.answer = answer;
     this.ms = ms;
   }
 
+  get solution() {
+    return this.quiz.solution(this.target);
+  }
+
   get right() {
-    return this.answer === mod7(this.target);
+    return this.answer === this.solution;
   }
 }
 
@@ -698,7 +823,8 @@ class Stopwatch {
 }
 
 class Guess {
-  constructor() {
+  constructor(quiz) {
+    this.quiz = quiz;
     this.target = null;
     this.answer = null;
     this.fresh = false;
@@ -733,8 +859,12 @@ class Guess {
     return this.answer !== null;
   }
 
+  get solution() {
+    return this.quiz.solution(this.target);
+  }
+
   get right() {
-    return this.answered && this.answer === mod7(this.target);
+    return this.answered && this.answer === this.solution;
   }
 
   get ok() {
@@ -762,7 +892,9 @@ class Guess {
 }
 
 class StatCell {
-  constructor(count, time, fill) {
+  constructor(root, title, count, time, fill) {
+    this.root = root;
+    this.title = title;
     this.count = count;
     this.time = time;
     this.fill = fill;
@@ -770,7 +902,7 @@ class StatCell {
 }
 
 class Layout {
-  constructor(s, topStep, height, clefScale, clefWidth, columnX, notesWidth, labelY) {
+  constructor(s, topStep, height, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces) {
     this.s = s;
     this.topStep = topStep;
     this.height = height;
@@ -782,7 +914,7 @@ class Layout {
     this.lineWidth = Math.max(1, 0.13 * s);
     this.refWidth = Math.max(1.5, 0.18 * s);
     this.ledgerWidth = Math.max(1.2, 0.16 * s);
-    this.column = NOTE_COLUMN * s;
+    this.column = columnSpaces * s;
   }
 
   y(p) {
@@ -794,7 +926,7 @@ class Layout {
   }
 
   noteX(i) {
-    return (NOTE_PAD + NOTE_COLUMN / 2) * this.s + i * this.column;
+    return NOTE_PAD * this.s + (i + 0.5) * this.column;
   }
 
   noteIndex(x) {
@@ -803,14 +935,16 @@ class Layout {
 }
 
 const state = {
-  mode: Mode.GUESS,
+  mode: Mode.NOTES,
   settings: new Settings(),
   notes: [],
   selected: -1,
   settingsOpen: false,
-  guess: new Guess(),
+  guesses: QUIZZES.map((quiz) => new Guess(quiz)),
 };
+state.guess = state.guesses[0];
 let layout = null;
+let labelled = null;
 let ghost = null;
 
 class ReachControl {
@@ -837,11 +971,15 @@ const answerButtons = [...document.querySelectorAll(".answer")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
 const clefInputs = [...document.querySelectorAll("input[data-clef]")];
 const guideColorInputs = [...document.querySelectorAll("input[name=guideColor]")];
+const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const mod7 = (p) => ((p % 7) + 7) % 7;
 const noteName = (p) => NOTE_NAMES[mod7(p)];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const sample = (list) => list[Math.floor(Math.random() * list.length)];
+const capitalize = (text) => text[0].toUpperCase() + text.slice(1);
+const plural = (n, word) => (n > 1 ? `${word}s` : word);
 const SECONDS = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const lengthButtons = [...document.querySelectorAll("button[data-length]")];
 const SCROLLBAR = measureScrollbar();
@@ -929,12 +1067,14 @@ function labelHeight(panel) {
 function computeLayout() {
   const visible = visibleClefs();
   const panel = activePanel();
-  const history = state.guess.history;
+  const g = state.guess;
+  const history = g.history;
+  const reviewing = panel === Panel.REVIEW;
   let [lo, hi] = noteRange();
-  if (panel === Panel.REVIEW) {
-    for (const a of history) {
-      lo = Math.min(lo, a.target);
-      hi = Math.max(hi, a.target);
+  if (reviewing) {
+    for (const p of history.flatMap((a) => a.target)) {
+      lo = Math.min(lo, p);
+      hi = Math.max(hi, p);
     }
   }
   let topStep = hi + 1.2;
@@ -949,11 +1089,13 @@ function computeLayout() {
   const clefSpacesAt = (scale) => CLEF_LEFT + columns.length * CLEF_COLUMN * scale;
   const heightSpaces = (topStep - bottomStep) / 2 + labelSpaces;
   const noteCount = panel === Panel.EDIT ? state.notes.length + 1 : history.length;
-  const guessSpaces = GUESS_LEFT + GUESS_RIGHT;
-  const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * NOTE_COLUMN : guessSpaces;
-  const reviewing = panel === Panel.REVIEW;
-  const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, REVIEW_VISIBLE_COLUMNS) : EDIT_VISIBLE_COLUMNS;
-  const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * NOTE_COLUMN : guessSpaces;
+  const spread = (g.quiz.size - 1) * INTERVAL_GAP;
+  const columnSpaces = reviewing ? NOTE_COLUMN + spread : NOTE_COLUMN;
+  const guessSpaces = GUESS_LEFT + spread + GUESS_RIGHT;
+  const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * columnSpaces : guessSpaces;
+  const reviewColumns = Math.floor((REVIEW_VISIBLE_COLUMNS * NOTE_COLUMN) / columnSpaces);
+  const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, reviewColumns) : EDIT_VISIBLE_COLUMNS;
+  const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * columnSpaces : guessSpaces;
   const spaceMin = reviewing ? REVIEW_SPACE_MIN : SPACE_MIN;
   const w = staffEl.clientWidth;
   const h = staffEl.clientHeight;
@@ -969,7 +1111,7 @@ function computeLayout() {
   const notesWidth = Math.max(w - clefWidth, Math.ceil(notesSpaces * s));
   const staffHeight = ((topStep - bottomStep) * s) / 2;
   const labelY = staffHeight + 1.3 * s;
-  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefScale, clefWidth, columnX, notesWidth, labelY);
+  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces);
 }
 
 function glyph(parent, d, x, y, s, cls) {
@@ -1015,6 +1157,10 @@ function drawNote(parent, L, x, p, cls) {
   return g;
 }
 
+function drawGroup(parent, L, x, target, cls) {
+  target.forEach((p, k) => drawNote(parent, L, x + (k - (target.length - 1) / 2) * INTERVAL_GAP * L.s, p, cls));
+}
+
 function label(parent, L, x, y, text, cls, anchor) {
   const size = clamp(0.9 * L.s, 12, 24);
   const node = svgEl("text", {
@@ -1037,14 +1183,17 @@ function strike(parent, node, L) {
 function drawGuess(L) {
   const g = state.guess;
   if (g.target === null) return;
-  const x = clamp(L.notesWidth / 2, GUESS_LEFT * L.s, L.notesWidth - GUESS_RIGHT * L.s);
+  const half = ((g.quiz.size - 1) / 2) * INTERVAL_GAP * L.s;
+  const x = clamp(L.notesWidth / 2, GUESS_LEFT * L.s + half, L.notesWidth - GUESS_RIGHT * L.s - half);
   const status = g.answered ? (g.right ? "is-correct" : "is-wrong") : "";
-  drawNote(noteSvg, L, x, g.target, `note ${status}${g.fresh ? " fresh" : ""}`);
+  drawGroup(noteSvg, L, x, g.target, `note ${status}${g.fresh ? " fresh" : ""}`);
   g.fresh = false;
   if (g.answered) {
-    label(noteSvg, L, x + (NOTEHEAD_WIDTH / 2 + 0.7) * L.s, L.y(g.target), noteName(g.target), status, "start");
+    const y = g.target.reduce((sum, p) => sum + L.y(p), 0) / g.target.length;
+    label(noteSvg, L, x + half + (NOTEHEAD_WIDTH / 2 + 0.7) * L.s, y, g.quiz.short[g.solution], status, "start");
   }
-  noteSvg.setAttribute("aria-label", "Portée avec une note à reconnaître");
+  const w = g.quiz.words;
+  noteSvg.setAttribute("aria-label", `Portée avec ${w.one} ${w.unit} à reconnaître`);
 }
 
 function drawEdit(L, back) {
@@ -1069,15 +1218,16 @@ function drawEdit(L, back) {
 
 function drawReview(L) {
   const g = state.guess;
+  const { short, words: w } = g.quiz;
   g.history.forEach((a, i) => {
     const x = L.noteX(i);
     const status = a.right ? "is-correct" : "is-wrong";
-    drawNote(noteSvg, L, x, a.target, `note ${status}`);
-    label(noteSvg, L, x, L.labelY, noteName(a.target), "truth", "middle");
-    if (!a.right) strike(noteSvg, label(noteSvg, L, x, L.labelY + REVIEW_ROW * L.s, NOTE_NAMES[a.answer], "is-wrong", "middle"), L);
+    drawGroup(noteSvg, L, x, a.target, `note ${status}`);
+    label(noteSvg, L, x, L.labelY, short[a.solution], "truth", "middle");
+    if (!a.right) strike(noteSvg, label(noteSvg, L, x, L.labelY + REVIEW_ROW * L.s, short[a.answer], "is-wrong", "middle"), L);
   });
   const n = g.history.length;
-  noteSvg.setAttribute("aria-label", n ? `Série de ${n} note${n > 1 ? "s" : ""} : ${g.ok} réussie${g.ok > 1 ? "s" : ""}, ${g.ko} erreur${g.ko > 1 ? "s" : ""}` : "Série vide");
+  noteSvg.setAttribute("aria-label", n ? `Série de ${n} ${plural(n, w.unit)} : ${g.ok} ${plural(g.ok, w.done)}, ${g.ko} ${plural(g.ko, "erreur")}` : "Série vide");
 }
 
 function renderStaff() {
@@ -1109,21 +1259,21 @@ function renderStaff() {
 }
 
 function attemptSummary(a) {
-  const name = noteName(a.target);
-  const text = `${a.right ? "✓" : "✗"} ${name[0].toUpperCase()}${name.slice(1)}`;
+  const text = `${a.right ? "✓" : "✗"} ${capitalize(a.quiz.names[a.solution])}`;
   return a.ms === null ? text : `${text} · ${formatSeconds(a.ms)}`;
 }
 
 function guessMessage() {
   const g = state.guess;
+  const { names, words: w } = g.quiz;
   const last = g.history.at(-1);
   if (g.answered) {
     if (g.right) return [attemptSummary(last), "ok"];
-    return [`✗ C'est un ${noteName(g.target)}, pas un ${NOTE_NAMES[g.answer]}.`, "ko"];
+    return [`✗ C'est ${w.article} ${names[g.solution]}, pas ${w.article} ${names[g.answer]}.`, "ko"];
   }
   if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
   if (last) return [attemptSummary(last), "past"];
-  return ["Quelle est cette note ?", ""];
+  return [w.question, ""];
 }
 
 function editMessage() {
@@ -1134,14 +1284,16 @@ function editMessage() {
 
 function reviewMessage() {
   const g = state.guess;
-  if (!g.history.length) return "Aucune note devinée dans cette série.";
-  const intro = g.complete ? "Série terminée !" : "Les notes de la série dans l'ordre.";
+  const w = g.quiz.words;
+  if (!g.history.length) return w.none;
+  const intro = g.complete ? "Série terminée !" : `Les ${w.unit}s de la série dans l'ordre.`;
   return `${intro} En rouge, tes erreurs, avec ta réponse barrée.`;
 }
 
 function setupMessage() {
-  const n = state.guess.history.length;
-  const text = "Combien de notes ? Le bilan s'affiche à la fin de la série.";
+  const g = state.guess;
+  const n = g.history.length;
+  const text = `${g.quiz.words.howMany} Le bilan s'affiche à la fin de la série.`;
   return n ? `${text} La série en cours sera effacée.` : text;
 }
 
@@ -1168,7 +1320,7 @@ function confusionMessage() {
   const counts = new Map();
   for (const a of g.history) {
     if (a.right) continue;
-    const key = `${NOTE_NAMES[a.answer]} au lieu de ${noteName(a.target)}`;
+    const key = `${g.quiz.names[a.answer]} au lieu de ${g.quiz.names[a.solution]}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -1186,8 +1338,11 @@ function renderReview() {
   $("statTime").textContent = pace === null ? "—" : formatDuration(pace * timed.length);
   $("statPace").textContent = pace === null ? "—" : formatSeconds(pace);
   $("confusions").textContent = confusionMessage();
+  $("statScoreLabel").textContent = plural(2, g.quiz.words.done);
+  $("statPaceLabel").textContent = `par ${g.quiz.words.unit}`;
   statCells.forEach((cell, step) => {
-    const tries = g.history.filter((a) => mod7(a.target) === step);
+    const tries = g.history.filter((a) => a.solution === step);
+    cell.root.hidden = !tries.length && !g.quiz.enabled(step);
     const ok = tries.filter((a) => a.right).length;
     const time = meanTime(tries);
     cell.count.textContent = tries.length ? `${ok}/${tries.length}` : "—";
@@ -1221,6 +1376,36 @@ function renderClock() {
   $("clock").textContent = pace === null ? "" : `moy. ${formatSeconds(pace)}`;
 }
 
+function choiceLabel(text) {
+  const fragment = document.createDocumentFragment();
+  const ordinal = /^(\d+)(\D+)$/.exec(text);
+  if (!ordinal) {
+    fragment.append(capitalize(text));
+    return fragment;
+  }
+  const sup = document.createElement("sup");
+  sup.textContent = ordinal[2];
+  fragment.append(ordinal[1], sup);
+  return fragment;
+}
+
+function labelQuiz(quiz) {
+  answerButtons.forEach((b, i) => {
+    const key = document.createElement("kbd");
+    key.textContent = quiz.keys[i];
+    b.replaceChildren(choiceLabel(quiz.short[i]), key);
+    b.setAttribute("aria-label", capitalize(quiz.names[i]));
+  });
+  statCells.forEach((cell, i) => cell.title.replaceChildren(choiceLabel(quiz.short[i])));
+  for (const b of lengthButtons) {
+    const n = Number(b.dataset.length);
+    if (n !== FREE_SERIES) b.textContent = `${n} ${plural(n, quiz.words.unit)}`;
+  }
+  $("scoreUnit").textContent = capitalize(quiz.words.unit);
+  $("tallyDone").textContent = ` ${plural(2, quiz.words.done)}`;
+  labelled = quiz;
+}
+
 function formatDelta(n) {
   if (n === 0) return "";
   return `(${n > 0 ? "+" : "−"}${Math.abs(n)})`;
@@ -1248,6 +1433,10 @@ function renderPanels() {
   $("softLines").checked = st.softLines;
   $("softLines").disabled = !st.guides;
   app.dataset.softLines = String(st.guides && st.softLines);
+  for (const input of intervalInputs) {
+    input.checked = st.intervals.has(Number(input.dataset.interval));
+    input.disabled = input.checked && st.intervals.size === 1;
+  }
   $("showNames").checked = st.names;
   $("topName").textContent = noteName(st.top);
   $("bottomName").textContent = noteName(st.bottom);
@@ -1275,8 +1464,10 @@ function renderPanels() {
   const feedback = $("feedback");
   feedback.textContent = text;
   feedback.className = `feedback ${tone}`;
+  if (labelled !== g.quiz) labelQuiz(g.quiz);
   answerButtons.forEach((b, i) => {
-    b.classList.toggle("correct", g.answered && i === mod7(g.target));
+    b.disabled = !g.quiz.enabled(i);
+    b.classList.toggle("correct", g.answered && i === g.solution);
     b.classList.toggle("wrong", g.answered && i === g.answer && !g.right);
   });
   const fixed = g.length !== FREE_SERIES;
@@ -1291,7 +1482,7 @@ function renderPanels() {
   renderPips();
   renderClock();
   $("reviewOpen").disabled = !g.history.length;
-  $("reviewClose").textContent = g.complete ? `Encore ${g.length} notes` : "Continuer";
+  $("reviewClose").textContent = g.complete ? `Encore ${g.length} ${plural(g.length, g.quiz.words.unit)}` : "Continuer";
   $("setupHint").textContent = setupMessage();
   for (const b of lengthButtons) b.classList.toggle("primary", Number(b.dataset.length) === g.length);
   renderReview();
@@ -1320,16 +1511,20 @@ function syncClock() {
   const g = state.guess;
   const showing = document.visibilityState === "visible" && answerButtons[0].offsetParent !== null;
   const running = showing && activePanel() === Panel.GUESS && g.target !== null && !g.answered;
-  g.clock.run(running);
-  clearInterval(g.tick);
+  for (const other of state.guesses) {
+    other.clock.run(running && other === g);
+    clearInterval(other.tick);
+  }
   if (running && g.length !== FREE_SERIES) g.tick = setInterval(renderClock, CLOCK_TICK);
 }
 
 function save() {
   try {
-    const g = state.guess;
-    const series = g.history.map((a) => [a.target, a.answer, a.ms]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, series, length: g.length }));
+    const quizzes = Object.fromEntries(state.guesses.map((g) => [g.quiz.mode, {
+      series: g.history.map((a) => [a.target, a.answer, a.ms]),
+      length: g.length,
+    }]));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, quizzes }));
   } catch {}
 }
 
@@ -1346,16 +1541,28 @@ function load() {
     state.notes = raw.notes.filter(Number.isInteger).slice(0, NOTES_MAX).map((p) => clamp(p, lo, hi));
   }
   state.selected = state.notes.length - 1;
-  if (Array.isArray(raw.series)) {
-    const isTarget = (v) => Number.isInteger(v) && v >= LINE_MIN - 2 * REACH_MAX && v <= LINE_MAX + 2 * REACH_MAX;
-    const isAnswer = (v) => Number.isInteger(v) && v >= 0 && v < NOTE_NAMES.length;
-    const isTime = (v) => v === undefined || v === null || (Number.isInteger(v) && v >= 0);
-    state.guess.history = raw.series
-      .filter((entry) => Array.isArray(entry) && (entry.length === 2 || entry.length === 3) && isTarget(entry[0]) && isAnswer(entry[1]) && isTime(entry[2]))
-      .slice(-SERIES_MAX)
-      .map(([target, answer, ms]) => new Attempt(target, answer, ms ?? null));
+  for (const g of state.guesses) {
+    const saved = raw.quizzes && typeof raw.quizzes === "object" ? raw.quizzes[g.quiz.mode] : g.quiz.mode === Mode.NOTES ? raw : null;
+    loadGuess(g, saved);
   }
-  if (SERIES_LENGTHS.includes(raw.length)) state.guess.length = raw.length;
+  state.guess = state.guesses.find((g) => g.quiz.mode === state.mode) ?? state.guess;
+}
+
+function loadGuess(g, raw) {
+  if (!raw || typeof raw !== "object") return;
+  if (Array.isArray(raw.series)) {
+    const inRange = (p) => p >= LINE_MIN - 2 * REACH_MAX && p <= LINE_MAX + 2 * REACH_MAX;
+    const isTarget = (t) => g.quiz.readable(t) && t.every(inRange);
+    const isAnswer = (v) => Number.isInteger(v) && v >= 0 && v < g.quiz.names.length;
+    const isTime = (v) => v === undefined || v === null || (Number.isInteger(v) && v >= 0);
+    g.history = raw.series
+      .filter((entry) => Array.isArray(entry) && (entry.length === 2 || entry.length === 3))
+      .map(([target, answer, ms]) => [Number.isInteger(target) ? [target] : target, answer, ms])
+      .filter(([target, answer, ms]) => isTarget(target) && isAnswer(answer) && isTime(ms))
+      .slice(-SERIES_MAX)
+      .map(([target, answer, ms]) => new Attempt(g.quiz, target, answer, ms ?? null));
+  }
+  if (SERIES_LENGTHS.includes(raw.length)) g.length = raw.length;
 }
 
 function revealY(L, y) {
@@ -1370,8 +1577,8 @@ function reveal() {
   if (!L) return;
   const panel = activePanel();
   if (panel === Panel.REVIEW || panel === Panel.SETUP) return;
-  if (state.mode === Mode.GUESS) {
-    if (state.guess.target !== null) revealY(L, L.y(state.guess.target));
+  if (state.mode !== Mode.EDIT) {
+    for (const p of state.guess.target ?? []) revealY(L, L.y(p));
     return;
   }
   if (state.selected < 0) return;
@@ -1389,11 +1596,8 @@ function commitNotes() {
   render();
 }
 
-function newTarget() {
-  const g = state.guess;
-  const all = guessPositions();
-  const candidates = all.length > 1 ? all.filter((p) => p !== g.target) : all;
-  g.target = candidates[Math.floor(Math.random() * candidates.length)];
+function newTarget(g = state.guess) {
+  g.target = g.quiz.pick(g.target);
   g.answer = null;
   g.fresh = true;
   g.clock.reset();
@@ -1406,8 +1610,9 @@ function answer(i) {
     proceed();
     return;
   }
+  if (!g.quiz.enabled(i)) return;
   g.answer = i;
-  g.history.push(new Attempt(g.target, i, g.clock.ms));
+  g.history.push(new Attempt(g.quiz, g.target, i, g.clock.ms));
   if (g.history.length > SERIES_MAX) g.history.shift();
   save();
   render();
@@ -1440,23 +1645,28 @@ function advance() {
 
 function setMode(mode) {
   if (mode === state.mode) return;
-  const g = state.guess;
-  clearTimeout(g.timer);
+  clearTimeout(state.guess.timer);
   state.mode = mode;
-  g.reviewing = false;
-  g.choosing = false;
-  if (mode === Mode.GUESS && (g.target === null || g.answered)) newTarget();
+  for (const g of state.guesses) {
+    g.reviewing = false;
+    g.choosing = false;
+  }
+  const g = state.guesses.find((other) => other.quiz.mode === mode);
+  if (g) {
+    state.guess = g;
+    if (g.target === null || g.answered) newTarget(g);
+  }
   save();
   render();
 }
 
 function settingsChanged() {
   const [lo, hi] = noteRange();
-  const g = state.guess;
   state.notes = state.notes.map((p) => clamp(p, lo, hi));
-  if (g.target !== null && !guessPositions().includes(g.target)) {
+  for (const g of state.guesses) {
+    if (g.target === null || g.quiz.valid(g.target)) continue;
     clearTimeout(g.timer);
-    newTarget();
+    newTarget(g);
   }
   save();
   render();
@@ -1527,7 +1737,7 @@ noteSvg.addEventListener("pointerleave", () => {
 });
 
 staffEl.addEventListener("click", () => {
-  if (state.mode === Mode.GUESS) proceed();
+  if (state.mode !== Mode.EDIT) proceed();
 });
 
 scroller.addEventListener("scroll", () => {
@@ -1579,7 +1789,7 @@ $("setupCancel").addEventListener("click", () => setChoosing(false));
 for (const b of lengthButtons) b.addEventListener("click", () => startSeries(Number(b.dataset.length)));
 document.addEventListener("visibilitychange", syncClock);
 
-for (const name of NOTE_NAMES) {
+for (let i = 0; i < NOTE_NAMES.length; i += 1) {
   const cell = document.createElement("div");
   const title = document.createElement("span");
   const count = document.createElement("span");
@@ -1588,7 +1798,6 @@ for (const name of NOTE_NAMES) {
   const fill = document.createElement("span");
   cell.className = "stat";
   title.className = "stat-name";
-  title.textContent = name[0].toUpperCase() + name.slice(1);
   count.className = "stat-count";
   time.className = "stat-time";
   meter.className = "meter";
@@ -1596,7 +1805,7 @@ for (const name of NOTE_NAMES) {
   meter.append(fill);
   cell.append(title, count, time, meter);
   $("perNote").append(cell);
-  statCells.push(new StatCell(count, time, fill));
+  statCells.push(new StatCell(cell, title, count, time, fill));
 }
 
 $("stepUp").addEventListener("click", () => moveSelected(1));
@@ -1653,6 +1862,15 @@ $("softLines").addEventListener("change", (e) => {
   state.settings.softLines = e.target.checked;
   settingsChanged();
 });
+for (const input of intervalInputs) {
+  input.addEventListener("change", () => {
+    const intervals = state.settings.intervals;
+    const n = Number(input.dataset.interval);
+    if (input.checked) intervals.add(n);
+    else if (intervals.size > 1) intervals.delete(n);
+    settingsChanged();
+  });
+}
 $("showNames").addEventListener("change", (e) => {
   state.settings.names = e.target.checked;
   settingsChanged();
@@ -1753,14 +1971,14 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     return;
   }
-  if (state.mode === Mode.GUESS) {
+  if (state.mode !== Mode.EDIT) {
     const onControl = event.target instanceof Element && event.target.closest("input, label, button:not(.answer)");
     if ((event.key === " " || event.key === "Enter") && state.guess.awaiting && !onControl) {
       proceed();
       event.preventDefault();
       return;
     }
-    const i = event.key.length === 1 ? "1234567".indexOf(event.key) : -1;
+    const i = event.key.length === 1 ? state.guess.quiz.keys.indexOf(event.key) : -1;
     if (i < 0) return;
     answer(i);
     event.preventDefault();
