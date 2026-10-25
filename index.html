@@ -21,9 +21,6 @@
   --accent: #5a3fc0;
   --accent-soft: #ece7fb;
   --on-accent: #ffffff;
-  --sol: #0b63a8;
-  --ut: #0b7a5c;
-  --fa: #b8560a;
   --ok: #1a7f37;
   --ok-soft: #e3f4e8;
   --ko: #b42318;
@@ -35,7 +32,15 @@
   --s4: 16px;
   --s5: 24px;
 }
+[data-guide="red"] { --guide: #aa3f4e; }
+[data-guide="ochre"] { --guide: #8d5e00; }
+[data-guide="green"] { --guide: #007a70; }
+[data-guide="blue"] { --guide: #006eae; }
 @media (prefers-color-scheme: dark) {
+  [data-guide="red"] { --guide: #ec8a92; }
+  [data-guide="ochre"] { --guide: #d79f4c; }
+  [data-guide="green"] { --guide: #31c3b5; }
+  [data-guide="blue"] { --guide: #65b2f1; }
   :root {
     --bg: #121110;
     --surface: #1f1e1b;
@@ -48,9 +53,6 @@
     --accent: #a593f5;
     --accent-soft: #2d2747;
     --on-accent: #16131f;
-    --sol: #6cb4ee;
-    --ut: #4fcfa6;
-    --fa: #f0a35e;
     --ok: #5dd27a;
     --ok-soft: #173322;
     --ko: #ff8a80;
@@ -253,8 +255,8 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .check { display: flex; align-items: center; gap: var(--s2); min-height: 44px; cursor: pointer; }
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
-.check .off { color: var(--muted); font-size: 14px; }
-.swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--c); flex: none; }
+.swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--guide); flex: none; }
+.colors { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
 .settings {
   display: none;
   background: var(--surface);
@@ -301,14 +303,9 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 .settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); margin-top: var(--s4); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 
-.clef-sol { --c: var(--sol); }
-.clef-ut { --c: var(--ut); }
-.clef-fa { --c: var(--fa); }
 .staff-line, .ledger, .barline { stroke: var(--staff); }
-.ref-line { stroke: var(--c); }
-.bracket { fill: var(--c); }
+.ref-line { stroke: var(--guide); }
 .clef-glyph { fill: var(--ink); }
-.clef-glyph.colored { fill: var(--c); }
 .note .head { fill: var(--ink); }
 .note.is-selected .head { fill: var(--accent); }
 .note.is-correct .head { fill: var(--ok); }
@@ -384,7 +381,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
   </div>
   <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings">Réglages</button>
 </header>
-<main id="app" data-mode="guess">
+<main id="app" data-mode="guess" data-guide="red">
   <div class="staff" id="staff">
     <div class="progress" id="progress" aria-hidden="true" hidden><span id="progressFill"></span></div>
     <div class="scroller" id="scroller">
@@ -464,11 +461,17 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
     </div>
     <fieldset>
       <legend>Clefs</legend>
-      <label class="check clef-sol"><input type="checkbox" data-clef="sol"><span class="swatch"></span>Clef de sol <span class="off"></span></label>
-      <label class="check clef-ut"><input type="checkbox" data-clef="ut"><span class="swatch"></span>Clef d'ut <span class="off"></span></label>
-      <label class="check clef-fa"><input type="checkbox" data-clef="fa"><span class="swatch"></span>Clef de fa <span class="off"></span></label>
+      <label class="check"><input type="checkbox" data-clef="sol">Clef de sol</label>
+      <label class="check"><input type="checkbox" data-clef="ut">Clef d'ut</label>
+      <label class="check"><input type="checkbox" data-clef="fa">Clef de fa</label>
       <label class="check"><input type="checkbox" id="guides">Repères de couleur</label>
-      <p class="help">Colore la ligne de chaque clef et marque ses 5 lignes habituelles.</p>
+      <p class="help">Colore les 5 lignes habituelles de chaque clef.</p>
+      <div class="colors" role="radiogroup" aria-label="Couleur des repères">
+        <label class="check" data-guide="red"><input type="radio" name="guideColor" value="red"><span class="swatch"></span>Rouge</label>
+        <label class="check" data-guide="ochre"><input type="radio" name="guideColor" value="ochre"><span class="swatch"></span>Ocre</label>
+        <label class="check" data-guide="green"><input type="radio" name="guideColor" value="green"><span class="swatch"></span>Vert</label>
+        <label class="check" data-guide="blue"><input type="radio" name="guideColor" value="blue"><span class="swatch"></span>Bleu</label>
+      </div>
     </fieldset>
     <fieldset>
       <legend>Notes à deviner</legend>
@@ -492,6 +495,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
         <button type="button" id="bottomAdd" aria-label="Ajouter une ligne en bas">+</button>
       </div>
       <p class="help" id="lineCount"></p>
+      <div class="row"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
       <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
     </fieldset>
     <div class="settings-foot">
@@ -506,6 +510,7 @@ legend { padding: 0; margin-bottom: var(--s1); font-weight: 650; }
 const Mode = Object.freeze({ GUESS: "guess", EDIT: "edit" });
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
+const GuideColor = Object.freeze({ RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
 const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
@@ -584,6 +589,7 @@ class Settings {
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
     this.guides = true;
+    this.guideColor = GuideColor.RED;
     this.names = false;
   }
 
@@ -594,6 +600,7 @@ class Settings {
       bottom: this.bottom,
       reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
       guides: this.guides,
+      guideColor: this.guideColor,
       names: this.names,
     };
   }
@@ -616,6 +623,7 @@ class Settings {
       }
     }
     if (typeof raw.guides === "boolean") s.guides = raw.guides;
+    if (Object.values(GuideColor).includes(raw.guideColor)) s.guideColor = raw.guideColor;
     if (typeof raw.names === "boolean") s.names = raw.names;
     return s;
   }
@@ -730,7 +738,7 @@ class Layout {
     this.notesWidth = notesWidth;
     this.labelY = labelY;
     this.lineWidth = Math.max(1, 0.13 * s);
-    this.refWidth = Math.max(2, 0.26 * s);
+    this.refWidth = Math.max(1.5, 0.18 * s);
     this.ledgerWidth = Math.max(1.2, 0.16 * s);
     this.column = NOTE_COLUMN * s;
   }
@@ -786,6 +794,7 @@ const noteSvg = $("noteSvg");
 const answerButtons = [...document.querySelectorAll(".answer")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
 const clefInputs = [...document.querySelectorAll("input[data-clef]")];
+const guideColorInputs = [...document.querySelectorAll("input[name=guideColor]")];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const mod7 = (p) => ((p % 7) + 7) % 7;
@@ -849,6 +858,12 @@ function lineAvailable(clef) {
 
 function visibleClefs() {
   return CLEFS.filter((c) => state.settings.clefs.has(c.id) && lineAvailable(c));
+}
+
+function clefSpan() {
+  const visible = visibleClefs();
+  if (!visible.length) return null;
+  return [Math.min(...visible.map((c) => c.staffLow)), Math.max(...visible.map((c) => c.staffHigh))];
 }
 
 function activePanel() {
@@ -921,10 +936,10 @@ function drawLines(svg, L, x1, x2) {
   const st = state.settings;
   const visible = visibleClefs();
   for (let p = st.bottom; p <= st.top; p += 2) {
-    const ref = st.guides ? visible.find((c) => c.line === p) : undefined;
+    const ref = st.guides && visible.some((c) => p >= c.staffLow && p <= c.staffHigh);
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
-      class: ref ? `ref-line clef-${ref.id}` : "staff-line",
+      class: ref ? "ref-line" : "staff-line",
       "stroke-width": ref ? L.refWidth : L.lineWidth,
     }, svg);
   }
@@ -937,16 +952,7 @@ function drawClefs(L) {
   svgEl("line", { x1: barX, x2: barX, y1: L.y(st.top), y2: L.y(st.bottom), class: "barline", "stroke-width": L.lineWidth }, clefSvg);
   for (const c of visibleClefs()) {
     const x = L.columnX.get(c.column);
-    if (st.guides) {
-      const yTop = L.y(Math.min(c.staffHigh, st.top));
-      const yBottom = L.y(Math.max(c.staffLow, st.bottom));
-      const width = 0.3 * L.s;
-      svgEl("rect", {
-        x, y: yTop - width / 2, width, height: yBottom - yTop + width, rx: width / 2,
-        class: `bracket clef-${c.id}`,
-      }, clefSvg);
-    }
-    glyph(clefSvg, c.glyph, x + 0.65 * L.s, L.y(c.line), L.s, `clef-glyph clef-${c.id}${st.guides ? " colored" : ""}`);
+    glyph(clefSvg, c.glyph, x + 0.65 * L.s, L.y(c.line), L.s, "clef-glyph");
   }
 }
 
@@ -1154,12 +1160,14 @@ function renderPanels() {
 
   for (const input of clefInputs) {
     const clef = CLEFS.find((c) => c.id === input.dataset.clef);
-    const available = lineAvailable(clef);
-    input.checked = st.clefs.has(clef.id);
-    input.disabled = !available;
-    input.parentElement.querySelector(".off").textContent = available ? "" : "(sa ligne est enlevée)";
+    input.checked = st.clefs.has(clef.id) && lineAvailable(clef);
   }
   $("guides").checked = st.guides;
+  app.dataset.guide = st.guideColor;
+  for (const input of guideColorInputs) {
+    input.checked = input.value === st.guideColor;
+    input.disabled = !st.guides;
+  }
   $("showNames").checked = st.names;
   $("topName").textContent = noteName(st.top);
   $("bottomName").textContent = noteName(st.bottom);
@@ -1180,6 +1188,8 @@ function renderPanels() {
   $("bottomRemove").disabled = st.bottom >= st.top;
   $("topAdd").disabled = st.top >= LINE_MAX;
   $("bottomAdd").disabled = st.bottom <= LINE_MIN;
+  const span = clefSpan();
+  $("fitLines").disabled = !span || (span[0] === st.bottom && span[1] === st.top);
 
   const [text, tone] = guessMessage();
   const feedback = $("feedback");
@@ -1520,9 +1530,21 @@ $("settingsClose").addEventListener("click", () => {
 
 for (const input of clefInputs) {
   input.addEventListener("change", () => {
-    const id = input.dataset.clef;
-    if (input.checked) state.settings.clefs.add(id);
-    else state.settings.clefs.delete(id);
+    const st = state.settings;
+    const clef = CLEFS.find((c) => c.id === input.dataset.clef);
+    if (input.checked) {
+      st.clefs.add(clef.id);
+      st.top = Math.max(st.top, clef.staffHigh);
+      st.bottom = Math.min(st.bottom, clef.staffLow);
+    } else {
+      st.clefs.delete(clef.id);
+    }
+    settingsChanged();
+  });
+}
+for (const input of guideColorInputs) {
+  input.addEventListener("change", () => {
+    state.settings.guideColor = input.value;
     settingsChanged();
   });
 }
@@ -1532,6 +1554,13 @@ $("guides").addEventListener("change", (e) => {
 });
 $("showNames").addEventListener("change", (e) => {
   state.settings.names = e.target.checked;
+  settingsChanged();
+});
+
+$("fitLines").addEventListener("click", () => {
+  const span = clefSpan();
+  if (!span) return;
+  [state.settings.bottom, state.settings.top] = span;
   settingsChanged();
 });
 
@@ -1565,6 +1594,9 @@ function repeatable(button, action) {
 for (const [id, change] of steppers) {
   repeatable($(id), () => {
     change(state.settings);
+    for (const clef of CLEFS) {
+      if (!lineAvailable(clef)) state.settings.clefs.delete(clef.id);
+    }
     settingsChanged();
   });
 }
@@ -1581,10 +1613,8 @@ function stepButton(text, label, parent) {
 for (const clef of CLEFS) {
   const grid = $("reach");
   const name = document.createElement("span");
-  const swatch = document.createElement("span");
-  name.className = `reach-name clef-${clef.id}`;
-  swatch.className = "swatch";
-  name.append(swatch, clef.name);
+  name.className = "reach-name";
+  name.append(clef.name);
   grid.append(name);
   for (const side of [Side.BELOW, Side.ABOVE]) {
     const where = side === Side.BELOW ? "en dessous" : "au-dessus";
