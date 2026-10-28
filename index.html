@@ -33,6 +33,7 @@ try {
   --ok-soft: light-dark(#e3f4e8, #173322);
   --ko: light-dark(#b42318, #ff8a80);
   --ko-soft: light-dark(#fbe6e3, #3a1c1a);
+  --warn: light-dark(#b86e00, #f0a43c);
   --mute: 10%;
   --radius: 12px;
   --s1: 4px;
@@ -157,14 +158,17 @@ main[data-panel="guess"][data-awaiting="true"] .staff { cursor: pointer; }
 .countdown {
   display: none;
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: var(--s2);
+  left: var(--s3);
+  right: var(--s3);
   z-index: 2;
-  height: 4px;
+  height: 10px;
+  border-radius: 5px;
   background: var(--border);
+  overflow: hidden;
 }
-.countdown span { display: block; height: 100%; background: var(--accent); transform-origin: left; }
+.countdown span { display: block; height: 100%; border-radius: 5px; background: var(--accent); }
+.countdown[data-phase="answer"] span { background: var(--warn); }
 main[data-mode="group"][data-panel="guess"] .countdown { display: block; }
 .scroller {
   position: absolute;
@@ -583,9 +587,14 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
         <button type="button" id="groupSizeAdd" aria-label="Une note de plus par groupe">+</button>
       </div>
       <div class="stepper">
-        <span>Temps par note : <b id="noteTime"></b></span>
-        <button type="button" id="noteTimeRemove" aria-label="Moins de temps par note">−</button>
-        <button type="button" id="noteTimeAdd" aria-label="Plus de temps par note">+</button>
+        <span>Lecture : <b id="readTime"></b></span>
+        <button type="button" id="readTimeRemove" aria-label="Moins de temps de lecture">−</button>
+        <button type="button" id="readTimeAdd" aria-label="Plus de temps de lecture">+</button>
+      </div>
+      <div class="stepper">
+        <span>Réponse : <b id="answerTime"></b></span>
+        <button type="button" id="answerTimeRemove" aria-label="Moins de temps de réponse">−</button>
+        <button type="button" id="answerTimeAdd" aria-label="Plus de temps de réponse">+</button>
       </div>
       <p class="help" id="groupTime"></p>
     </details>
@@ -698,10 +707,11 @@ const GROUP_MIN = 2;
 const GROUP_MAX = 8;
 const GROUP_DEFAULT = 2;
 const GROUP_SPAN = 7;
-const NOTE_TIME_MIN = 500;
-const NOTE_TIME_MAX = 5000;
-const NOTE_TIME_STEP = 250;
-const NOTE_TIME_DEFAULT = 1000;
+const TIME_MIN = 500;
+const TIME_MAX = 20000;
+const TIME_STEP = 250;
+const READ_TIME_DEFAULT = 2000;
+const ANSWER_TIME_DEFAULT = 2000;
 const GROUP_REVEAL = 1200;
 const IDLE_LIMIT = 2;
 const PLAIN_LOW = 30;
@@ -810,7 +820,8 @@ class Settings {
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
     this.groupSize = GROUP_DEFAULT;
-    this.noteTime = NOTE_TIME_DEFAULT;
+    this.readTime = READ_TIME_DEFAULT;
+    this.answerTime = ANSWER_TIME_DEFAULT;
   }
 
   toJSON() {
@@ -827,7 +838,8 @@ class Settings {
       intervals: [...this.intervals],
       theme: this.theme,
       groupSize: this.groupSize,
-      noteTime: this.noteTime,
+      readTime: this.readTime,
+      answerTime: this.answerTime,
     };
   }
 
@@ -863,8 +875,9 @@ class Settings {
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
     if (Number.isInteger(raw.groupSize) && raw.groupSize >= GROUP_MIN && raw.groupSize <= GROUP_MAX) s.groupSize = raw.groupSize;
-    const isTime = (v) => Number.isInteger(v) && v >= NOTE_TIME_MIN && v <= NOTE_TIME_MAX && v % NOTE_TIME_STEP === 0;
-    if (isTime(raw.noteTime)) s.noteTime = raw.noteTime;
+    const isTime = (v) => Number.isInteger(v) && v >= TIME_MIN && v <= TIME_MAX && v % TIME_STEP === 0;
+    if (isTime(raw.readTime)) s.readTime = raw.readTime;
+    if (isTime(raw.answerTime)) s.answerTime = raw.answerTime;
     if (Array.isArray(raw.intervals)) {
       const intervals = new Set(raw.intervals.filter((n) => INTERVALS.includes(n)));
       if (intervals.size) s.intervals = intervals;
@@ -1155,6 +1168,7 @@ class GroupGuess extends Guess {
     super(quiz);
     this.clef = null;
     this.entered = [];
+    this.veiled = false;
   }
 
   get awaiting() {
@@ -1166,8 +1180,16 @@ class GroupGuess extends Guess {
     return this.answered && groupRight(this.target, this.entered);
   }
 
+  get showFor() {
+    return this.target === null ? 0 : state.settings.readTime;
+  }
+
   get limit() {
-    return state.settings.noteTime * (this.target?.length ?? 0);
+    return this.target === null ? 0 : state.settings.readTime + state.settings.answerTime;
+  }
+
+  get hidden() {
+    return !this.answered && this.clock.ms >= this.showFor;
   }
 
   get shown() {
@@ -1635,6 +1657,16 @@ function drawGroupGuess(L) {
   const half = ((ps.length - 1) / 2) * INTERVAL_GAP * L.s;
   const x = clamp(L.notesWidth / 2, GUESS_LEFT * L.s + half, L.notesWidth - GUESS_LEFT * L.s - half);
   const marks = noteMarks(g.target, g.entered, g.answered);
+  g.veiled = g.hidden;
+  if (g.veiled) {
+    groupXs(L, x, ps.length).forEach((xk, k) => {
+      const m = marks[k];
+      const text = m === Mark.RIGHT ? noteName(g.target[k]) : "?";
+      label(noteSvg, L, xk, L.y(PLAIN_MIDDLE), text, m === Mark.CURRENT ? "is-selected" : m, "middle");
+    });
+    noteSvg.setAttribute("aria-label", `Groupe de ${ps.length} notes caché, à nommer de mémoire`);
+    return;
+  }
   const root = svgEl("g", { class: g.fresh ? "fresh" : "" }, noteSvg);
   g.fresh = false;
   const bottom = drawBeamed(root, L, x, ps, marks.map((m) => `note ${m}`));
@@ -1952,10 +1984,15 @@ function renderPanels() {
   $("groupRhythm").textContent = `(${RHYTHMS.get(st.groupSize).name})`;
   $("groupSizeRemove").disabled = st.groupSize <= GROUP_MIN;
   $("groupSizeAdd").disabled = st.groupSize >= GROUP_MAX;
-  $("noteTime").textContent = `${TIME.format(st.noteTime / 1000)}\u00a0s`;
-  $("noteTimeRemove").disabled = st.noteTime <= NOTE_TIME_MIN;
-  $("noteTimeAdd").disabled = st.noteTime >= NOTE_TIME_MAX;
-  $("groupTime").textContent = `Soit ${TIME.format((st.groupSize * st.noteTime) / 1000)}\u00a0s pour lire chaque groupe.`;
+  $("readTime").textContent = `${TIME.format(st.readTime / 1000)}\u00a0s`;
+  $("readTimeRemove").disabled = st.readTime <= TIME_MIN;
+  $("readTimeAdd").disabled = st.readTime >= TIME_MAX;
+  $("answerTime").textContent = `${TIME.format(st.answerTime / 1000)}\u00a0s`;
+  $("answerTimeRemove").disabled = st.answerTime <= TIME_MIN;
+  $("answerTimeAdd").disabled = st.answerTime >= TIME_MAX;
+  const shown = TIME.format(st.readTime / 1000);
+  const extra = TIME.format(st.answerTime / 1000);
+  $("groupTime").textContent = `Les notes restent ${shown}\u00a0s à l'écran, puis tu as encore ${extra}\u00a0s pour finir de les nommer.`;
 
   const [text, tone] = guessMessage();
   const feedback = $("feedback");
@@ -2031,12 +2068,19 @@ function syncClock() {
 
 function renderCountdown() {
   const g = state.guess;
-  $("countdownFill").style.transform = `scaleX(${clamp(1 - g.clock.ms / g.limit, 0, 1)})`;
+  const ms = g.clock.ms;
+  const reading = ms < g.showFor;
+  const left = reading ? 1 - ms / g.showFor : 1 - (ms - g.showFor) / (g.limit - g.showFor);
+  const fill = $("countdownFill");
+  fill.style.width = `${100 * clamp(left, 0, 1)}%`;
+  fill.parentElement.dataset.phase = reading ? "read" : "answer";
 }
 
 function tickCountdown() {
+  const g = state.guess;
   renderCountdown();
-  if (state.guess.clock.ms >= state.guess.limit) finishGroup();
+  if (g.clock.ms >= g.limit) finishGroup();
+  else if (g.hidden !== g.veiled) render();
   else frame = requestAnimationFrame(tickCountdown);
 }
 
@@ -2544,8 +2588,10 @@ for (const clef of CLEFS) {
 const groupSteppers = [
   ["groupSizeRemove", (s) => { s.groupSize = Math.max(GROUP_MIN, s.groupSize - 1); }],
   ["groupSizeAdd", (s) => { s.groupSize = Math.min(GROUP_MAX, s.groupSize + 1); }],
-  ["noteTimeRemove", (s) => { s.noteTime = Math.max(NOTE_TIME_MIN, s.noteTime - NOTE_TIME_STEP); }],
-  ["noteTimeAdd", (s) => { s.noteTime = Math.min(NOTE_TIME_MAX, s.noteTime + NOTE_TIME_STEP); }],
+  ["readTimeRemove", (s) => { s.readTime = Math.max(TIME_MIN, s.readTime - TIME_STEP); }],
+  ["readTimeAdd", (s) => { s.readTime = Math.min(TIME_MAX, s.readTime + TIME_STEP); }],
+  ["answerTimeRemove", (s) => { s.answerTime = Math.max(TIME_MIN, s.answerTime - TIME_STEP); }],
+  ["answerTimeAdd", (s) => { s.answerTime = Math.min(TIME_MAX, s.answerTime + TIME_STEP); }],
 ];
 for (const [id, change] of groupSteppers) {
   repeatable($(id), () => {
