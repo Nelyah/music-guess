@@ -699,7 +699,8 @@ const CONTINUE_AFTER = 300;
 const CLOCK_TICK = 100;
 const REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 90;
-const SPACE_MAX = 34;
+const SPACE_MAX = 24;
+const STAFF_FILL = 0.7;
 const STACK_ROW = 44;
 const STACK_GAP = 4;
 const STACK_STAFF_MIN = 200;
@@ -1495,7 +1496,7 @@ function computeLayout() {
   const h = staffEl.clientHeight;
   const clefScale = w / (clefSpacesAt(1) + minNotesSpaces) < h / heightSpaces ? CLEF_TIGHT : 1;
   const clefSpaces = clefSpacesAt(clefScale);
-  const fit = (avail) => clamp(Math.min(avail / heightSpaces, w / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX);
+  const fit = (avail) => clamp(Math.min((avail * STAFF_FILL) / heightSpaces, w / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX);
 
   let s = fit(h);
   if (columnar && SCROLLBAR > 0 && (clefSpaces + notesSpaces) * s > w) s = fit(h - SCROLLBAR);
