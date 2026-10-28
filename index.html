@@ -709,7 +709,7 @@ const STAFF_FILL = 0.7;
 const SIZE_MIN = 40;
 const SIZE_MAX = 200;
 const SIZE_STEP = 10;
-const SIZE_DEFAULT = 100;
+const SIZE_DEFAULT = 80;
 const STACK_ROW = 44;
 const STACK_GAP = 4;
 const STACK_STAFF_MIN = 200;
@@ -1504,7 +1504,7 @@ function computeLayout() {
   const reviewColumns = Math.floor((REVIEW_VISIBLE_COLUMNS * NOTE_COLUMN) / columnSpaces);
   const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, reviewColumns) : EDIT_VISIBLE_COLUMNS;
   const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * columnSpaces : guessSpaces;
-  const size = state.settings.staffSize / SIZE_DEFAULT;
+  const size = state.settings.staffSize / 100;
   const spaceMin = (reviewing ? REVIEW_SPACE_MIN : SPACE_MIN) * Math.min(1, size);
   const stretch = columnar ? Math.max(1, size) : 1;
   const w = staffEl.clientWidth;
