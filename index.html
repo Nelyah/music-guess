@@ -154,6 +154,18 @@ main[data-panel="guess"][data-awaiting="true"] .staff { cursor: pointer; }
   pointer-events: none;
   animation: fade .3s ease-out;
 }
+.countdown {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 4px;
+  background: var(--border);
+}
+.countdown span { display: block; height: 100%; background: var(--accent); transform-origin: left; }
+main[data-mode="group"][data-panel="guess"] .countdown { display: block; }
 .scroller {
   position: absolute;
   inset: 0;
@@ -358,6 +370,10 @@ main.settings-open .dock { display: none; }
 .delta { color: var(--muted); font-size: 14px; }
 .settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
+.for-groups { display: none; }
+main[data-mode="group"] .for-groups { display: block; }
+main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .pick, main[data-mode="group"] .clef-row .mini { display: none; }
+main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 
 .ledger, .barline { stroke: var(--staff); }
 .staff-line, .ref-line { stroke: var(--guide); }
@@ -367,7 +383,11 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
 .note.is-selected .head { fill: var(--accent); }
 .note.is-correct .head { fill: var(--ok); }
 .note.is-wrong .head { fill: var(--ko); }
-.note.fresh { animation: fade .1s ease-out; }
+.note.is-current .head { fill: var(--accent); }
+.fresh { animation: fade .1s ease-out; }
+.stem { stroke: var(--ink); }
+.beam { fill: var(--ink); }
+.tuplet { fill: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-style: italic; font-weight: 700; }
 .sel-col { fill: var(--accent-soft); }
 .ghost { opacity: .35; pointer-events: none; }
 .label {
@@ -456,12 +476,14 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
   <div class="modes" role="group" aria-label="Mode">
     <button type="button" data-mode="guess" aria-pressed="true">Notes</button>
     <button type="button" data-mode="interval" aria-pressed="false">Intervalles</button>
+    <button type="button" data-mode="group" aria-pressed="false">Groupes</button>
     <button type="button" data-mode="edit" aria-pressed="false">Écrire</button>
   </div>
   <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Réglages</span></button>
 </header>
 <main id="app" data-mode="guess">
   <div class="staff" id="staff">
+    <div class="countdown" aria-hidden="true"><span id="countdownFill"></span></div>
     <div class="scroller" id="scroller">
       <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
       <svg id="noteSvg" class="notes" role="img" aria-label="Portée"></svg>
@@ -545,12 +567,27 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
     <details class="group" open>
       <summary>Clefs</summary>
       <div id="clefList"></div>
-      <label class="check"><input type="checkbox" id="guides">Repères de couleur</label>
-      <p class="help">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
-      <div class="line-row">
+      <div class="row not-groups"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
+      <label class="check not-groups"><input type="checkbox" id="guides">Repères de couleur</label>
+      <p class="help not-groups">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
+      <div class="line-row not-groups">
         <label for="otherColor">Autres lignes</label>
         <span class="pick"><span class="swatch" id="otherSwatch"></span><select id="otherColor"></select></span>
       </div>
+    </details>
+    <details class="group for-groups" open>
+      <summary>Groupes</summary>
+      <div class="stepper">
+        <span>Notes par groupe : <b id="groupSize"></b> <span class="delta" id="groupRhythm"></span></span>
+        <button type="button" id="groupSizeRemove" aria-label="Une note de moins par groupe">−</button>
+        <button type="button" id="groupSizeAdd" aria-label="Une note de plus par groupe">+</button>
+      </div>
+      <div class="stepper">
+        <span>Temps par note : <b id="noteTime"></b></span>
+        <button type="button" id="noteTimeRemove" aria-label="Moins de temps par note">−</button>
+        <button type="button" id="noteTimeAdd" aria-label="Plus de temps par note">+</button>
+      </div>
+      <p class="help" id="groupTime"></p>
     </details>
     <details class="group">
       <summary>Notes à deviner</summary>
@@ -561,7 +598,7 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
         <span class="reach-head">Au-dessus</span>
       </div>
     </details>
-    <details class="group">
+    <details class="group not-groups">
       <summary>Intervalles</summary>
       <p class="help">Intervalles proposés, montants ou descendants.</p>
       <div class="options">
@@ -574,7 +611,7 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
         <label class="check"><input type="checkbox" data-interval="8">Octave</label>
       </div>
     </details>
-    <details class="group">
+    <details class="group not-groups">
       <summary>Lignes de la portée</summary>
       <div class="stepper">
         <span>En haut : <b id="topName"></b> <span class="delta" id="topDelta"></span></span>
@@ -587,7 +624,6 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
         <button type="button" id="bottomAdd" aria-label="Ajouter une ligne en bas">+</button>
       </div>
       <p class="help" id="lineCount"></p>
-      <div class="row"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
       <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
     </details>
     <details class="group">
@@ -607,12 +643,13 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
 <script>
 "use strict";
 
-const Mode = Object.freeze({ NOTES: "guess", INTERVALS: "interval", EDIT: "edit" });
+const Mode = Object.freeze({ NOTES: "guess", INTERVALS: "interval", GROUPS: "group", EDIT: "edit" });
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
 const LineColor = Object.freeze({ NEUTRAL: "neutral", RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
 const Theme = Object.freeze({ AUTO: "auto", LIGHT: "light", DARK: "dark" });
 const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
+const Mark = Object.freeze({ RIGHT: "is-correct", WRONG: "is-wrong", CURRENT: "is-current", PENDING: "" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
 const INTERVAL_NAMES = ["seconde", "tierce", "quarte", "quinte", "sixte", "septième", "octave"];
@@ -657,11 +694,35 @@ const SPACE_MAX = 34;
 const STACK_ROW = 44;
 const STACK_GAP = 4;
 const STACK_STAFF_MIN = 200;
+const GROUP_MIN = 2;
+const GROUP_MAX = 8;
+const GROUP_DEFAULT = 2;
+const GROUP_SPAN = 7;
+const NOTE_TIME_MIN = 500;
+const NOTE_TIME_MAX = 5000;
+const NOTE_TIME_STEP = 250;
+const NOTE_TIME_DEFAULT = 1000;
+const GROUP_REVEAL = 1200;
+const IDLE_LIMIT = 2;
+const PLAIN_LOW = 30;
+const PLAIN_HIGH = 38;
+const PLAIN_MIDDLE = 34;
+const NOTEHEAD_BLACK_WIDTH = 1.18;
+const STEM_LENGTH = 3.5;
+const STEM_WIDTH = 0.12;
+const STEM_ATTACH = 0.168;
+const BEAM_THICKNESS = 0.5;
+const BEAM_SPACING = 0.25;
+const TUPLET_SIZE = 1.4;
+const GROUP_REACH = 12;
+const REVIEW_CLEF = 2.6;
+const REVIEW_CLEF_SCALE = 0.7;
 
 const GLYPHS = Object.freeze({
   gClef: "M376 415C374 427 376 428 382 434C398 449 419 470 438 491C522 583 572 702 572 815C572 902 548 988 507 1048C492 1070 466 1098 455 1098C441 1098 410 1072 390 1050C316 968 292 843 292 739C292 681 299 616 306 575C308 563 309 561 297 551C233 498 164 437 112 373C43 287 0 194 0 87C0 -87 119 -252 364 -252C387 -252 413 -250 433 -246C444 -244 446 -243 448 -255C460 -322 475 -409 475 -456C475 -604 375 -622 316 -622C262 -622 236 -606 236 -593C236 -586 245 -583 268 -576C299 -567 335 -540 335 -482C335 -427 300 -380 239 -380C172 -380 132 -433 132 -495C132 -560 171 -658 322 -658C389 -658 519 -628 519 -458C519 -401 501 -306 490 -244C488 -232 489 -233 503 -227C604 -187 671 -102 671 11C671 139 577 252 430 252C404 252 404 252 401 270ZM470 943C503 943 530 916 530 861C530 792 497 728 419 650C403 634 379 611 356 591C349 585 345 586 343 599C339 625 337 659 337 691C337 847 409 943 470 943ZM361 262C364 243 364 244 346 238C258 208 201 129 201 44C201 -46 248 -110 316 -133C324 -136 336 -139 343 -139C351 -139 355 -134 355 -128C355 -121 347 -118 340 -115C298 -97 268 -54 268 -8C268 49 307 92 368 109C384 113 386 112 388 101L438 -197C440 -208 439 -208 424 -211C408 -214 388 -216 368 -216C193 -216 80 -119 80 20C80 79 90 158 173 252C233 319 279 356 326 394C336 402 338 401 340 390ZM430 103C428 115 429 118 441 117C522 110 589 42 589 -46C589 -109 551 -160 495 -188C483 -194 481 -194 479 -182Z",
   cClef: "M230 482C230 496 223 503 209 503H208C194 503 187 496 187 482V-482C187 -496 194 -503 208 -503H209C223 -503 230 -496 230 -482V-44C230 -36 235 -37 239 -38C265 -45 307 -71 328 -184C331 -200 337 -209 347 -209C358 -209 363 -199 368 -182C381 -138 404 -89 475 -89C540 -89 558 -153 558 -284C558 -415 535 -474 452 -474C430 -474 410 -471 394 -466C377 -461 367 -454 367 -447C367 -442 383 -436 394 -432C414 -425 434 -405 434 -367C434 -323 405 -298 366 -298C323 -298 289 -327 289 -380C289 -443 344 -506 463 -506C627 -506 699 -391 699 -287C699 -149 623 -53 490 -53C461 -53 442 -58 429 -62C424 -64 418 -65 413 -65C409 -65 404 -64 400 -61C386 -52 364 -20 364 0C364 20 386 52 400 61C404 64 409 65 413 65C418 65 424 64 429 62C442 58 461 53 490 53C623 53 699 149 699 287C699 391 627 506 463 506C344 506 289 443 289 380C289 327 323 298 366 298C405 298 434 323 434 367C434 405 414 425 394 432C383 436 367 442 367 447C367 454 377 461 394 466C410 471 430 474 452 474C535 474 558 415 558 284C558 153 540 89 475 89C404 89 381 138 368 182C363 199 358 209 347 209C337 209 331 200 328 184C307 71 265 45 239 38C235 37 230 36 230 44ZM21 503C7 503 0 496 0 482V-482C0 -496 7 -503 21 -503H107C121 -503 128 -496 128 -482V482C128 496 121 503 107 503Z",
   fClef: "M252 262C78 262 0 135 0 39C0 -41 42 -110 123 -110C186 -110 229 -66 229 -4C229 60 182 100 133 100C106 100 96 93 83 93C70 93 67 101 67 111C67 151 127 224 229 224C335 224 381 120 381 -37C381 -140 359 -260 297 -356C237 -449 134 -534 10 -605C1 -610 -5 -615 -5 -623C-5 -629 -1 -635 8 -635C13 -635 19 -633 25 -630C158 -565 286 -489 392 -375C479 -281 531 -159 531 -28C531 146 425 262 252 262ZM629 180C598 180 574 156 574 125C574 94 598 70 629 70C660 70 684 94 684 125C684 156 660 180 629 180ZM630 -71C599 -71 576 -94 576 -125C576 -156 599 -179 630 -179C661 -179 684 -156 684 -125C684 -94 661 -71 630 -71Z",
+  noteheadBlack: "M97 -125C186 -125 295 -43 295 42C295 93 255 125 198 125C88 125 0 44 0 -42C0 -94 43 -125 97 -125Z",
   noteheadWhole: "M216 125C83 125 0 70 0 2C0 -65 57 -125 206 -125C370 -125 422 -68 422 2C422 73 309 125 216 125ZM111 63C122 98 159 103 190 103C259 103 314 29 314 -31C314 -38 313 -44 312 -50C307 -75 293 -92 268 -98C258 -101 247 -102 237 -102C228 -102 220 -101 211 -98C194 -93 178 -84 164 -72C156 -65 149 -58 143 -50C123 -27 108 7 108 39C108 47 109 55 111 63Z",
 });
 
@@ -701,6 +762,33 @@ const LINE_COLORS = [
   new ColorDef(LineColor.BLUE, "Bleu"),
 ];
 
+class Rhythm {
+  constructor(beams, tuplet, name) {
+    this.beams = beams;
+    this.tuplet = tuplet;
+    this.name = name;
+  }
+}
+
+const RHYTHMS = new Map([
+  [2, new Rhythm(1, 0, "croches")],
+  [3, new Rhythm(1, 3, "triolet de croches")],
+  [4, new Rhythm(2, 0, "doubles croches")],
+  [5, new Rhythm(2, 5, "quintolet de doubles croches")],
+  [6, new Rhythm(2, 6, "sextolet de doubles croches")],
+  [7, new Rhythm(2, 7, "septolet de doubles croches")],
+  [8, new Rhythm(3, 0, "triples croches")],
+]);
+
+class StaffView {
+  constructor(bottom, top, clefs, guides) {
+    this.bottom = bottom;
+    this.top = top;
+    this.clefs = clefs;
+    this.guides = guides;
+  }
+}
+
 class Reach {
   constructor(below = REACH_DEFAULT, above = REACH_DEFAULT) {
     this[Side.BELOW] = below;
@@ -721,6 +809,8 @@ class Settings {
     this.names = false;
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
+    this.groupSize = GROUP_DEFAULT;
+    this.noteTime = NOTE_TIME_DEFAULT;
   }
 
   toJSON() {
@@ -736,6 +826,8 @@ class Settings {
       names: this.names,
       intervals: [...this.intervals],
       theme: this.theme,
+      groupSize: this.groupSize,
+      noteTime: this.noteTime,
     };
   }
 
@@ -770,6 +862,9 @@ class Settings {
     if (colors.includes(raw.otherColor)) s.otherColor = raw.otherColor;
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
+    if (Number.isInteger(raw.groupSize) && raw.groupSize >= GROUP_MIN && raw.groupSize <= GROUP_MAX) s.groupSize = raw.groupSize;
+    const isTime = (v) => Number.isInteger(v) && v >= NOTE_TIME_MIN && v <= NOTE_TIME_MAX && v % NOTE_TIME_STEP === 0;
+    if (isTime(raw.noteTime)) s.noteTime = raw.noteTime;
     if (Array.isArray(raw.intervals)) {
       const intervals = new Set(raw.intervals.filter((n) => INTERVALS.includes(n)));
       if (intervals.size) s.intervals = intervals;
@@ -859,7 +954,29 @@ class IntervalQuiz extends Quiz {
   }
 }
 
-const QUIZZES = [new NoteQuiz(), new IntervalQuiz()];
+class GroupQuiz extends Quiz {
+  constructor() {
+    super(Mode.GROUPS, NOTE_NAMES, NOTE_NAMES, "1234567", GROUP_MAX,
+      new QuizWords("groupe", "un", "réussi", "un", "Quelles sont ces notes ?", "Combien de groupes ?", "Aucun groupe deviné dans cette série."));
+  }
+
+  readable() {
+    return false;
+  }
+
+  pick(clef) {
+    const [lo, hi] = clefRange(clef);
+    const start = lo + Math.floor(Math.random() * (Math.max(0, hi - lo - GROUP_SPAN) + 1));
+    const span = [];
+    for (let p = start; p <= Math.min(hi, start + GROUP_SPAN); p += 1) span.push(p);
+    const target = [];
+    while (target.length < state.settings.groupSize) target.push(sample(span.filter((p) => p !== target.at(-1))));
+    return target;
+  }
+}
+
+const NOTE_QUIZ = new NoteQuiz();
+const QUIZZES = [NOTE_QUIZ, new IntervalQuiz(), new GroupQuiz()];
 
 class Attempt {
   constructor(quiz, target, answer, ms = null) {
@@ -875,6 +992,47 @@ class Attempt {
 
   get right() {
     return this.answer === this.solution;
+  }
+
+  get title() {
+    return capitalize(this.quiz.names[this.solution]);
+  }
+
+  get shown() {
+    return this.target;
+  }
+
+  get notes() {
+    return [this];
+  }
+}
+
+class GroupAttempt {
+  constructor(quiz, clef, target, answer, ms) {
+    this.quiz = quiz;
+    this.clef = clef;
+    this.target = target;
+    this.answer = answer;
+    this.ms = ms;
+  }
+
+  get right() {
+    return groupRight(this.target, this.answer);
+  }
+
+  get title() {
+    return this.target.map((p) => capitalize(noteName(p))).join(" ");
+  }
+
+  get shown() {
+    return plainTarget(this.clef, this.target);
+  }
+
+  get notes() {
+    const marks = noteMarks(this.target, this.answer, true);
+    return this.target
+      .map((p, k) => new Attempt(NOTE_QUIZ, [p], this.answer[k] ?? null, null))
+      .filter((_, k) => marks[k] !== Mark.PENDING);
   }
 }
 
@@ -921,6 +1079,26 @@ class Guess {
 
   get awaiting() {
     return this.answered && !this.right;
+  }
+
+  get limit() {
+    return 0;
+  }
+
+  get shown() {
+    return this.target ?? [];
+  }
+
+  get marks() {
+    return this.answered ? [this.solution, this.right ? -1 : this.answer] : [-1, -1];
+  }
+
+  next() {
+    this.target = this.quiz.pick(this.target);
+  }
+
+  valid() {
+    return this.quiz.valid(this.target);
   }
 
   get spent() {
@@ -972,6 +1150,51 @@ class Guess {
   }
 }
 
+class GroupGuess extends Guess {
+  constructor(quiz) {
+    super(quiz);
+    this.clef = null;
+    this.entered = [];
+  }
+
+  get awaiting() {
+    const recent = this.history.slice(-IDLE_LIMIT);
+    return this.answered && recent.length === IDLE_LIMIT && recent.every((a) => !a.answer.length);
+  }
+
+  get right() {
+    return this.answered && groupRight(this.target, this.entered);
+  }
+
+  get limit() {
+    return state.settings.noteTime * (this.target?.length ?? 0);
+  }
+
+  get shown() {
+    return this.target === null ? [] : plainTarget(this.clef, this.target);
+  }
+
+  get marks() {
+    if (!this.answered) return [-1, -1];
+    const k = this.entered.findIndex((n, i) => n !== mod7(this.target[i]));
+    if (k >= 0) return [mod7(this.target[k]), this.entered[k]];
+    return [mod7(this.target[Math.min(this.entered.length, this.target.length - 1)]), -1];
+  }
+
+  next() {
+    this.clef = sample(groupClefs());
+    this.target = this.quiz.pick(this.clef);
+    this.entered = [];
+  }
+
+  valid() {
+    const [lo, hi] = clefRange(this.clef);
+    return groupClefs().includes(this.clef)
+      && this.target.length === state.settings.groupSize
+      && this.target.every((p) => p >= lo && p <= hi);
+  }
+}
+
 class StatCell {
   constructor(root, title, count, time, fill) {
     this.root = root;
@@ -983,7 +1206,8 @@ class StatCell {
 }
 
 class Layout {
-  constructor(s, topStep, height, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces) {
+  constructor(view, s, topStep, height, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces) {
+    this.view = view;
     this.s = s;
     this.topStep = topStep;
     this.height = height;
@@ -1021,12 +1245,13 @@ const state = {
   notes: [],
   selected: -1,
   settingsOpen: false,
-  guesses: QUIZZES.map((quiz) => new Guess(quiz)),
+  guesses: QUIZZES.map((quiz) => (quiz.mode === Mode.GROUPS ? new GroupGuess(quiz) : new Guess(quiz))),
 };
 state.guess = state.guesses[0];
 let layout = null;
 let labelled = null;
 let ghost = null;
+let frame = 0;
 
 class ReachControl {
   constructor(clef, side, name, output, minus, plus) {
@@ -1072,6 +1297,9 @@ const mod7 = (p) => ((p % 7) + 7) % 7;
 const noteName = (p) => NOTE_NAMES[mod7(p)];
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const sample = (list) => list[Math.floor(Math.random() * list.length)];
+const groupRight = (target, answer) => answer.length === target.length && answer.every((n, k) => n === mod7(target[k]));
+const plainTarget = (clef, target) => target.map((p) => p + PLAIN_LOW - clef.staffLow);
+const TIME = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 const capitalize = (text) => text[0].toUpperCase() + text.slice(1);
 const plural = (n, word) => (n > 1 ? `${word}s` : word);
 const SECONDS = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -1127,7 +1355,44 @@ function guessPositions() {
 }
 
 function lineAvailable(clef) {
-  return clef.line >= state.settings.bottom && clef.line <= state.settings.top;
+  return state.mode === Mode.GROUPS || (clef.line >= state.settings.bottom && clef.line <= state.settings.top);
+}
+
+function groupClefs() {
+  const clefs = CLEFS.filter((c) => state.settings.clefs.has(c.id));
+  return clefs.length ? clefs : [CLEFS[0]];
+}
+
+function plainClef(c) {
+  return new ClefDef(c.id, c.name, c.label, c.line + PLAIN_LOW - c.staffLow, PLAIN_LOW, PLAIN_HIGH, 0, c.glyph, c.up, c.down);
+}
+
+function groupRange() {
+  const ranges = groupClefs().map((c) => plainTarget(c, clefRange(c)));
+  return [Math.min(...ranges.map((r) => r[0])), Math.max(...ranges.map((r) => r[1]))];
+}
+
+function noteMarks(target, answer, finished) {
+  const timedOut = finished && answer.every((n, k) => n === mod7(target[k]));
+  return target.map((p, k) => {
+    if (k < answer.length) return answer[k] === mod7(p) ? Mark.RIGHT : Mark.WRONG;
+    if (k === answer.length) return finished ? (timedOut ? Mark.WRONG : Mark.PENDING) : Mark.CURRENT;
+    return Mark.PENDING;
+  });
+}
+
+function staffView() {
+  const st = state.settings;
+  if (state.mode !== Mode.GROUPS) return new StaffView(st.bottom, st.top, visibleClefs(), st.guides);
+  const g = state.guess;
+  const clefs = activePanel() === Panel.GUESS && g.clef ? [plainClef(g.clef)] : [];
+  return new StaffView(PLAIN_LOW, PLAIN_HIGH, clefs, false);
+}
+
+function groupSize() {
+  const g = state.guess;
+  if (activePanel() === Panel.REVIEW) return Math.max(1, ...g.history.map((a) => a.target.length));
+  return g.target?.length ?? state.settings.groupSize;
 }
 
 function visibleClefs() {
@@ -1158,23 +1423,31 @@ function labelHeight(panel) {
       return state.settings.names ? LABEL_ROW : 0;
     case Panel.REVIEW:
       return LABEL_ROW + (state.guess.ko > 0 ? REVIEW_ROW : 0);
+    case Panel.GUESS:
+      return state.mode === Mode.GROUPS ? LABEL_ROW : 0;
     default:
       return 0;
   }
 }
 
 function computeLayout() {
-  const visible = visibleClefs();
+  const view = staffView();
   const panel = activePanel();
   const g = state.guess;
   const history = g.history;
   const reviewing = panel === Panel.REVIEW;
-  let [lo, hi] = noteRange();
+  const grouped = state.mode === Mode.GROUPS;
+  const visible = grouped && !reviewing ? groupClefs().map(plainClef) : view.clefs;
+  let [lo, hi] = grouped ? groupRange() : noteRange();
   if (reviewing) {
-    for (const p of history.flatMap((a) => a.target)) {
+    for (const p of history.flatMap((a) => a.shown)) {
       lo = Math.min(lo, p);
       hi = Math.max(hi, p);
     }
+  }
+  if (grouped) {
+    lo = Math.min(lo, PLAIN_MIDDLE - 3 - GROUP_REACH);
+    hi = Math.max(hi, PLAIN_MIDDLE + 3 + GROUP_REACH);
   }
   let topStep = hi + 1.2;
   let bottomStep = lo - 1.2;
@@ -1188,9 +1461,9 @@ function computeLayout() {
   const clefSpacesAt = (scale) => CLEF_LEFT + columns.length * CLEF_COLUMN * scale;
   const heightSpaces = (topStep - bottomStep) / 2 + labelSpaces;
   const noteCount = panel === Panel.EDIT ? state.notes.length + 1 : history.length;
-  const spread = (g.quiz.size - 1) * INTERVAL_GAP;
-  const columnSpaces = reviewing ? NOTE_COLUMN + spread : NOTE_COLUMN;
-  const guessSpaces = GUESS_LEFT + spread + GUESS_RIGHT;
+  const spread = ((grouped ? groupSize() : g.quiz.size) - 1) * INTERVAL_GAP;
+  const columnSpaces = reviewing ? NOTE_COLUMN + spread + (grouped ? REVIEW_CLEF : 0) : NOTE_COLUMN;
+  const guessSpaces = GUESS_LEFT + spread + (grouped ? GUESS_LEFT : GUESS_RIGHT);
   const notesSpaces = columnar ? 2 * NOTE_PAD + noteCount * columnSpaces : guessSpaces;
   const reviewColumns = Math.floor((REVIEW_VISIBLE_COLUMNS * NOTE_COLUMN) / columnSpaces);
   const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, reviewColumns) : EDIT_VISIBLE_COLUMNS;
@@ -1210,7 +1483,7 @@ function computeLayout() {
   const notesWidth = Math.max(w - clefWidth, Math.ceil(notesSpaces * s));
   const staffHeight = ((topStep - bottomStep) * s) / 2;
   const labelY = staffHeight + 1.3 * s;
-  return new Layout(s, topStep, staffHeight + labelSpaces * s, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces);
+  return new Layout(view, s, topStep, staffHeight + labelSpaces * s, clefScale, clefWidth, columnX, notesWidth, labelY, columnSpaces);
 }
 
 function glyph(parent, d, x, y, s, cls) {
@@ -1220,9 +1493,10 @@ function glyph(parent, d, x, y, s, cls) {
 
 function drawLines(svg, L, x1, x2) {
   const st = state.settings;
-  const ranked = st.guides ? rankedClefs() : [];
-  const other = st.guides ? st.otherColor : LineColor.NEUTRAL;
-  for (let p = st.bottom; p <= st.top; p += 2) {
+  const v = L.view;
+  const ranked = v.guides ? rankedClefs() : [];
+  const other = v.guides ? st.otherColor : LineColor.NEUTRAL;
+  for (let p = v.bottom; p <= v.top; p += 2) {
     const owner = ranked.find((c) => p >= c.staffLow && p <= c.staffHigh);
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
@@ -1234,40 +1508,77 @@ function drawLines(svg, L, x1, x2) {
 }
 
 function drawClefs(L) {
-  const st = state.settings;
+  const v = L.view;
   const barX = 0.3 * L.s;
   drawLines(clefSvg, L, barX, L.clefWidth);
-  svgEl("line", { x1: barX, x2: barX, y1: L.y(st.top), y2: L.y(st.bottom), class: "barline", "stroke-width": L.lineWidth }, clefSvg);
-  for (const c of visibleClefs()) {
+  svgEl("line", { x1: barX, x2: barX, y1: L.y(v.top), y2: L.y(v.bottom), class: "barline", "stroke-width": L.lineWidth }, clefSvg);
+  for (const c of v.clefs) {
     const x = L.columnX.get(c.column);
     glyph(clefSvg, c.glyph, x + 0.65 * L.clefScale * L.s, L.y(c.line), L.clefScale * L.s, "clef-glyph");
   }
 }
 
-function mutedLine(p) {
-  const st = state.settings;
-  if (!st.guides || p % 2 !== 0 || p < st.bottom || p > st.top) return false;
-  return !visibleClefs().some((c) => p >= c.staffLow && p <= c.staffHigh);
+function mutedLine(v, p) {
+  if (!v.guides || p % 2 !== 0 || p < v.bottom || p > v.top) return false;
+  return !v.clefs.some((c) => p >= c.staffLow && p <= c.staffHigh);
 }
 
-function ledgerLines(p) {
-  const st = state.settings;
-  const lines = mutedLine(p) ? [p] : [];
-  for (let l = st.top + 2; l <= p; l += 2) lines.push(l);
-  for (let l = st.bottom - 2; l >= p; l -= 2) lines.push(l);
+function ledgerLines(v, p) {
+  const lines = mutedLine(v, p) ? [p] : [];
+  for (let l = v.top + 2; l <= p; l += 2) lines.push(l);
+  for (let l = v.bottom - 2; l >= p; l -= 2) lines.push(l);
   return lines;
 }
 
-function drawNote(parent, L, x, p, cls) {
+function drawNote(parent, L, x, p, cls, head = GLYPHS.noteheadWhole, width = NOTEHEAD_WIDTH) {
   const g = svgEl("g", { class: cls }, parent);
-  const half = (NOTEHEAD_WIDTH / 2 + LEDGER_EXTENSION) * L.s;
+  const half = (width / 2 + LEDGER_EXTENSION) * L.s;
   const ledger = (l) => svgEl("line", {
     x1: x - half, x2: x + half, y1: L.y(l), y2: L.y(l),
     class: "ledger", "stroke-width": L.ledgerWidth,
   }, g);
-  for (const l of ledgerLines(p)) ledger(l);
-  glyph(g, GLYPHS.noteheadWhole, x - (NOTEHEAD_WIDTH / 2) * L.s, L.y(p), L.s, "head");
+  for (const l of ledgerLines(L.view, p)) ledger(l);
+  glyph(g, head, x - (width / 2) * L.s, L.y(p), L.s, "head");
   return g;
+}
+
+function groupXs(L, x, n) {
+  return Array.from({ length: n }, (_, k) => x + (k - (n - 1) / 2) * INTERVAL_GAP * L.s);
+}
+
+function drawBeamed(parent, L, x, ps, classes) {
+  const s = L.s;
+  const rhythm = RHYTHMS.get(ps.length);
+  const xs = groupXs(L, x, ps.length);
+  const up = Math.max(...ps.map((p) => PLAIN_MIDDLE - p)) > Math.max(...ps.map((p) => p - PLAIN_MIDDLE));
+  const side = up ? 1 : -1;
+  const extreme = up ? Math.max(...ps) : Math.min(...ps);
+  const stack = (rhythm.beams - 1) * (BEAM_THICKNESS + BEAM_SPACING);
+  const edge = L.y(extreme + side * 2 * (STEM_LENGTH + stack));
+  const stemX = xs.map((xk) => xk + (side * (NOTEHEAD_BLACK_WIDTH - STEM_WIDTH) * s) / 2);
+  ps.forEach((p, k) => {
+    drawNote(parent, L, xs[k], p, classes[k], GLYPHS.noteheadBlack, NOTEHEAD_BLACK_WIDTH);
+    svgEl("line", {
+      x1: stemX[k], x2: stemX[k], y1: L.y(p) - side * STEM_ATTACH * s, y2: edge,
+      class: "stem", "stroke-width": STEM_WIDTH * s,
+    }, parent);
+  });
+  const left = stemX[0] - (STEM_WIDTH * s) / 2;
+  const right = stemX.at(-1) + (STEM_WIDTH * s) / 2;
+  for (let b = 0; b < rhythm.beams; b += 1) {
+    const offset = b * (BEAM_THICKNESS + BEAM_SPACING) * s;
+    const y = up ? edge + offset : edge - offset - BEAM_THICKNESS * s;
+    svgEl("rect", { x: left, y, width: right - left, height: BEAM_THICKNESS * s, class: "beam" }, parent);
+  }
+  let bottom = Math.max(...ps.map((p) => L.y(p) + s / 2), up ? 0 : edge);
+  if (rhythm.tuplet) {
+    const size = TUPLET_SIZE * s;
+    const y = up ? edge - 0.4 * s : edge + 0.4 * s + 0.75 * size;
+    const text = svgEl("text", { x: (left + right) / 2, y, class: "tuplet", "font-size": size, "text-anchor": "middle" }, parent);
+    text.textContent = String(rhythm.tuplet);
+    if (!up) bottom = y;
+  }
+  return bottom;
 }
 
 function drawGroup(parent, L, x, target, cls) {
@@ -1307,6 +1618,50 @@ function drawGuess(L) {
   }
   const w = g.quiz.words;
   noteSvg.setAttribute("aria-label", `Portée avec ${w.one} ${w.unit} à reconnaître`);
+}
+
+function drawGroupGuess(L) {
+  const g = state.guess;
+  if (g.target === null) return;
+  const ps = g.shown;
+  const half = ((ps.length - 1) / 2) * INTERVAL_GAP * L.s;
+  const x = clamp(L.notesWidth / 2, GUESS_LEFT * L.s + half, L.notesWidth - GUESS_LEFT * L.s - half);
+  const marks = noteMarks(g.target, g.entered, g.answered);
+  const root = svgEl("g", { class: g.fresh ? "fresh" : "" }, noteSvg);
+  g.fresh = false;
+  const bottom = drawBeamed(root, L, x, ps, marks.map((m) => `note ${m}`));
+  const y = Math.min(L.labelY, Math.max(bottom, L.y(PLAIN_LOW)) + 1.3 * L.s);
+  const xs = groupXs(L, x, ps.length);
+  marks.forEach((m, k) => {
+    if (m === Mark.CURRENT || (m === Mark.PENDING && !g.answered)) return;
+    label(noteSvg, L, xs[k], y, noteName(g.target[k]), m, "middle");
+  });
+  noteSvg.setAttribute("aria-label", `Portée avec un groupe de ${ps.length} notes à reconnaître`);
+}
+
+function drawGroupReview(L) {
+  const g = state.guess;
+  const s = L.s;
+  g.history.forEach((a, i) => {
+    const left = L.noteX(i) - L.column / 2;
+    if (i > 0) {
+      svgEl("line", { x1: left, x2: left, y1: L.y(PLAIN_HIGH), y2: L.y(PLAIN_LOW), class: "barline", "stroke-width": L.lineWidth }, noteSvg);
+    }
+    const clef = plainClef(a.clef);
+    glyph(noteSvg, clef.glyph, left + 0.5 * s, L.y(clef.line), REVIEW_CLEF_SCALE * s, "clef-glyph");
+    const x = left + (L.column + REVIEW_CLEF * s) / 2;
+    const marks = noteMarks(a.target, a.answer, true);
+    drawBeamed(noteSvg, L, x, a.shown, marks.map((m) => `note ${m}`));
+    groupXs(L, x, a.target.length).forEach((xk, k) => {
+      label(noteSvg, L, xk, L.labelY, noteName(a.target[k]), "truth", "middle");
+      const given = a.answer[k];
+      if (marks[k] === Mark.WRONG && given !== undefined) {
+        strike(noteSvg, label(noteSvg, L, xk, L.labelY + REVIEW_ROW * s, NOTE_NAMES[given], "is-wrong", "middle"), L);
+      }
+    });
+  });
+  const n = g.history.length;
+  noteSvg.setAttribute("aria-label", n ? `Série de ${n} ${plural(n, "groupe")} : ${g.ok} ${plural(g.ok, "réussi")}, ${g.ko} ${plural(g.ko, "erreur")}` : "Série vide");
 }
 
 function drawEdit(L, back) {
@@ -1355,15 +1710,18 @@ function renderStaff() {
   drawClefs(L);
   const back = svgEl("g", {}, noteSvg);
   drawLines(noteSvg, L, 0, L.notesWidth);
+  const grouped = state.mode === Mode.GROUPS;
   switch (activePanel()) {
     case Panel.GUESS:
-      drawGuess(L);
+      if (grouped) drawGroupGuess(L);
+      else drawGuess(L);
       break;
     case Panel.SETUP:
       noteSvg.setAttribute("aria-label", "Portée");
       break;
     case Panel.REVIEW:
-      drawReview(L);
+      if (grouped) drawGroupReview(L);
+      else drawReview(L);
       break;
     case Panel.EDIT:
       drawEdit(L, back);
@@ -1372,7 +1730,7 @@ function renderStaff() {
 }
 
 function attemptSummary(a) {
-  const text = `${a.right ? "✓" : "✗"} ${capitalize(a.quiz.names[a.solution])}`;
+  const text = `${a.right ? "✓" : "✗"} ${a.title}`;
   return a.ms === null ? text : `${text} · ${formatSeconds(a.ms)}`;
 }
 
@@ -1382,7 +1740,9 @@ function guessMessage() {
   const last = g.history.at(-1);
   if (g.answered) {
     if (g.right) return [attemptSummary(last), "ok"];
-    return [`✗ C'est ${w.article} ${names[g.solution]}, pas ${w.article} ${names[g.answer]}.`, "ko"];
+    const [good, bad] = g.marks;
+    if (bad < 0) return [`✗ Temps écoulé · ${last.title}`, "ko"];
+    return [`✗ C'est ${w.article} ${names[good]}, pas ${w.article} ${names[bad]}.`, "ko"];
   }
   if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
   if (last) return [attemptSummary(last), "past"];
@@ -1431,11 +1791,12 @@ function confusionMessage() {
   if (!g.history.length) return "";
   if (!g.ko) return "Aucune erreur dans cette série.";
   const counts = new Map();
-  for (const a of g.history) {
-    if (a.right) continue;
-    const key = `${g.quiz.names[a.answer]} au lieu de ${g.quiz.names[a.solution]}`;
+  for (const a of g.history.flatMap((attempt) => attempt.notes)) {
+    if (a.right || a.answer === null) continue;
+    const key = `${a.quiz.names[a.answer]} au lieu de ${a.quiz.names[a.solution]}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+  if (!counts.size) return "Aucune mauvaise note : seul le temps a manqué.";
   const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 3);
   return `Erreurs fréquentes : ${top.map(([key, n]) => (n > 1 ? `${key} (${n} fois)` : key)).join(" · ")}`;
 }
@@ -1453,8 +1814,9 @@ function renderReview() {
   $("confusions").textContent = confusionMessage();
   $("statScoreLabel").textContent = plural(2, g.quiz.words.done);
   $("statPaceLabel").textContent = `par ${g.quiz.words.unit}`;
+  const notes = g.history.flatMap((a) => a.notes);
   statCells.forEach((cell, step) => {
-    const tries = g.history.filter((a) => a.solution === step);
+    const tries = notes.filter((a) => a.solution === step);
     cell.root.hidden = !tries.length && !g.quiz.enabled(step);
     const ok = tries.filter((a) => a.right).length;
     const time = meanTime(tries);
@@ -1551,7 +1913,7 @@ function renderPanels() {
   $("otherColor").value = st.otherColor;
   $("otherColor").disabled = !st.guides;
   $("otherSwatch").dataset.guide = st.otherColor;
-  app.dataset.guides = String(st.guides);
+  app.dataset.guides = String(st.guides && state.mode !== Mode.GROUPS);
   for (const input of intervalInputs) {
     input.checked = st.intervals.has(Number(input.dataset.interval));
     input.disabled = input.checked && st.intervals.size === 1;
@@ -1578,16 +1940,25 @@ function renderPanels() {
   $("bottomAdd").disabled = st.bottom <= LINE_MIN;
   const span = clefSpan();
   $("fitLines").disabled = !span || (span[0] === st.bottom && span[1] === st.top);
+  $("groupSize").textContent = String(st.groupSize);
+  $("groupRhythm").textContent = `(${RHYTHMS.get(st.groupSize).name})`;
+  $("groupSizeRemove").disabled = st.groupSize <= GROUP_MIN;
+  $("groupSizeAdd").disabled = st.groupSize >= GROUP_MAX;
+  $("noteTime").textContent = `${TIME.format(st.noteTime / 1000)}\u00a0s`;
+  $("noteTimeRemove").disabled = st.noteTime <= NOTE_TIME_MIN;
+  $("noteTimeAdd").disabled = st.noteTime >= NOTE_TIME_MAX;
+  $("groupTime").textContent = `Soit ${TIME.format((st.groupSize * st.noteTime) / 1000)}\u00a0s pour lire chaque groupe.`;
 
   const [text, tone] = guessMessage();
   const feedback = $("feedback");
   feedback.textContent = text;
   feedback.className = `feedback ${tone}`;
   if (labelled !== g.quiz) labelQuiz(g.quiz);
+  const [good, bad] = g.marks;
   answerButtons.forEach((b, i) => {
     b.disabled = !g.quiz.enabled(i);
-    b.classList.toggle("correct", g.answered && i === g.solution);
-    b.classList.toggle("wrong", g.answered && i === g.answer && !g.right);
+    b.classList.toggle("correct", i === good);
+    b.classList.toggle("wrong", i === bad);
   });
   const fixed = g.length !== FREE_SERIES;
   app.dataset.awaiting = String(g.awaiting);
@@ -1644,12 +2015,27 @@ function syncClock() {
     clearInterval(other.tick);
   }
   if (running && g.length !== FREE_SERIES) g.tick = setInterval(renderClock, CLOCK_TICK);
+  cancelAnimationFrame(frame);
+  if (!g.limit) return;
+  renderCountdown();
+  if (running) frame = requestAnimationFrame(tickCountdown);
+}
+
+function renderCountdown() {
+  const g = state.guess;
+  $("countdownFill").style.transform = `scaleX(${clamp(1 - g.clock.ms / g.limit, 0, 1)})`;
+}
+
+function tickCountdown() {
+  renderCountdown();
+  if (state.guess.clock.ms >= state.guess.limit) finishGroup();
+  else frame = requestAnimationFrame(tickCountdown);
 }
 
 function save() {
   try {
     const quizzes = Object.fromEntries(state.guesses.map((g) => [g.quiz.mode, {
-      series: g.history.map((a) => [a.target, a.answer, a.ms]),
+      series: g instanceof GroupGuess ? [] : g.history.map((a) => [a.target, a.answer, a.ms]),
       length: g.length,
     }]));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, quizzes }));
@@ -1706,7 +2092,7 @@ function reveal() {
   const panel = activePanel();
   if (panel === Panel.REVIEW || panel === Panel.SETUP) return;
   if (state.mode !== Mode.EDIT) {
-    for (const p of state.guess.target ?? []) revealY(L, L.y(p));
+    for (const p of state.guess.shown) revealY(L, L.y(p));
     return;
   }
   if (state.selected < 0) return;
@@ -1725,7 +2111,7 @@ function commitNotes() {
 }
 
 function newTarget(g = state.guess) {
-  g.target = g.quiz.pick(g.target);
+  g.next();
   g.answer = null;
   g.fresh = true;
   g.clock.reset();
@@ -1739,6 +2125,12 @@ function answer(i) {
     return;
   }
   if (!g.quiz.enabled(i)) return;
+  if (g instanceof GroupGuess) {
+    g.entered.push(i);
+    if (i === mod7(g.target[g.entered.length - 1]) && g.entered.length < g.target.length) render();
+    else finishGroup();
+    return;
+  }
   g.answer = i;
   g.history.push(new Attempt(g.quiz, g.target, i, g.clock.ms));
   if (g.history.length > SERIES_MAX) g.history.shift();
@@ -1746,6 +2138,18 @@ function answer(i) {
   render();
   g.answeredAt = performance.now();
   if (g.right) g.timer = setTimeout(advance, FEEDBACK_RIGHT);
+}
+
+function finishGroup() {
+  const g = state.guess;
+  if (g.answered) return;
+  g.answer = g.entered;
+  g.history.push(new GroupAttempt(g.quiz, g.clef, g.target, [...g.entered], Math.round(Math.min(g.clock.ms, g.limit))));
+  if (g.history.length > SERIES_MAX) g.history.shift();
+  save();
+  render();
+  g.answeredAt = performance.now();
+  if (!g.awaiting) g.timer = setTimeout(advance, g.right ? FEEDBACK_RIGHT : GROUP_REVEAL);
 }
 
 function proceed() {
@@ -1792,7 +2196,7 @@ function settingsChanged() {
   const [lo, hi] = noteRange();
   state.notes = state.notes.map((p) => clamp(p, lo, hi));
   for (const g of state.guesses) {
-    if (g.target === null || g.quiz.valid(g.target)) continue;
+    if (g.target === null || g.valid()) continue;
     clearTimeout(g.timer);
     newTarget(g);
   }
@@ -2129,6 +2533,19 @@ for (const clef of CLEFS) {
     }
   }
 }
+const groupSteppers = [
+  ["groupSizeRemove", (s) => { s.groupSize = Math.max(GROUP_MIN, s.groupSize - 1); }],
+  ["groupSizeAdd", (s) => { s.groupSize = Math.min(GROUP_MAX, s.groupSize + 1); }],
+  ["noteTimeRemove", (s) => { s.noteTime = Math.max(NOTE_TIME_MIN, s.noteTime - NOTE_TIME_STEP); }],
+  ["noteTimeAdd", (s) => { s.noteTime = Math.min(NOTE_TIME_MAX, s.noteTime + NOTE_TIME_STEP); }],
+];
+for (const [id, change] of groupSteppers) {
+  repeatable($(id), () => {
+    change(state.settings);
+    settingsChanged();
+  });
+}
+
 $("resetSettings").addEventListener("click", () => {
   state.settings = new Settings();
   settingsChanged();
