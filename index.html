@@ -1250,9 +1250,17 @@ function mutedLine(p) {
   return !visibleClefs().some((c) => p >= c.staffLow && p <= c.staffHigh);
 }
 
+function nearestStaff(p) {
+  const distance = (c) => Math.max(0, c.staffLow - p, p - c.staffHigh);
+  return visibleClefs().reduce((best, c) => (best === null || distance(c) < distance(best) ? c : best), null);
+}
+
 function ledgerLines(p) {
   const st = state.settings;
-  const lines = mutedLine(p) ? [p] : [];
+  const staff = nearestStaff(p);
+  const lines = staff ? [] : mutedLine(p) ? [p] : [];
+  for (let l = (staff?.staffHigh ?? Infinity) + 2; l <= p; l += 2) if (mutedLine(l)) lines.push(l);
+  for (let l = (staff?.staffLow ?? -Infinity) - 2; l >= p; l -= 2) if (mutedLine(l)) lines.push(l);
   for (let l = st.top + 2; l <= p; l += 2) lines.push(l);
   for (let l = st.bottom - 2; l >= p; l -= 2) lines.push(l);
   return lines;
