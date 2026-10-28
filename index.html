@@ -8,6 +8,13 @@
 <meta name="color-scheme" content="light dark">
 <title>Lecture des clefs</title>
 <link rel="icon" href="data:,">
+<script>
+try {
+  document.documentElement.dataset.theme = JSON.parse(localStorage.getItem("lecture-clefs"))?.settings?.theme ?? "light";
+} catch {
+  document.documentElement.dataset.theme = "light";
+}
+</script>
 <style>
 :root {
   color-scheme: light dark;
@@ -26,6 +33,7 @@
   --ok-soft: light-dark(#e3f4e8, #173322);
   --ko: light-dark(#b42318, #ff8a80);
   --ko-soft: light-dark(#fbe6e3, #3a1c1a);
+  --mute: 10%;
   --radius: 12px;
   --s1: 4px;
   --s2: 8px;
@@ -35,6 +43,7 @@
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
+[data-guide="neutral"] { --guide: var(--staff); }
 [data-guide="red"] { --guide: light-dark(#bd3e52, #f5848e); }
 [data-guide="ochre"] { --guide: light-dark(#986600, #dd9d35); }
 [data-guide="green"] { --guide: light-dark(#078379, #04c5b6); }
@@ -79,8 +88,19 @@ button {
 }
 button:hover:not(:disabled) { border-color: var(--ink); }
 button:active:not(:disabled) { transform: translateY(1px); background: var(--accent-soft); }
-button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 button:disabled { opacity: .4; cursor: not-allowed; }
+select {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  cursor: pointer;
+}
+select:disabled { cursor: not-allowed; }
 .modes {
   display: flex;
   padding: 3px;
@@ -256,8 +276,9 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
 .swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--guide); flex: none; }
-.colors, .options { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
+.options { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
 .settings {
+  --mini: 36px;
   display: none;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -318,17 +339,29 @@ main.settings-open .dock { display: none; }
 .reach-name.off { opacity: .45; }
 .mini { display: flex; align-items: center; justify-content: center; gap: 2px; }
 .mini output { min-width: 1.4em; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; }
-.mini button { width: 36px; min-height: 40px; font-size: 18px; }
+.mini button { width: var(--mini); min-height: 40px; font-size: 18px; }
 @media (max-width: 359px) {
-  .mini button { width: 32px; min-height: 36px; }
+  .settings { --mini: 32px; }
+  .mini button { min-height: 36px; }
 }
+.clef-row, .line-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8em calc(2 * var(--mini) + 2px);
+  align-items: center;
+  gap: var(--s2);
+}
+.line-row { min-height: 48px; }
+.pick { display: flex; align-items: center; gap: 6px; }
+.pick select { flex: 1; min-width: 0; }
+.pick:has(:disabled) .swatch { opacity: .4; }
+.line-row .swatch { background: color-mix(in oklab, var(--guide) var(--mute), var(--surface)); }
 .delta { color: var(--muted); font-size: 14px; }
 .settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 
-.staff-line, .ledger, .barline { stroke: var(--staff); }
-main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--staff) 60%, var(--paper)); }
-.ref-line { stroke: var(--guide); }
+.ledger, .barline { stroke: var(--staff); }
+.staff-line, .ref-line { stroke: var(--guide); }
+main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) var(--mute), var(--paper)); }
 .clef-glyph { fill: var(--ink); }
 .note .head { fill: var(--ink); }
 .note.is-selected .head { fill: var(--accent); }
@@ -427,7 +460,7 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
   </div>
   <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Réglages</span></button>
 </header>
-<main id="app" data-mode="guess" data-guide="red">
+<main id="app" data-mode="guess">
   <div class="staff" id="staff">
     <div class="scroller" id="scroller">
       <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
@@ -511,18 +544,13 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
     </div>
     <details class="group" open>
       <summary>Clefs</summary>
-      <label class="check"><input type="checkbox" data-clef="sol">Clef de sol</label>
-      <label class="check"><input type="checkbox" data-clef="ut">Clef d'ut</label>
-      <label class="check"><input type="checkbox" data-clef="fa">Clef de fa</label>
+      <div id="clefList"></div>
       <label class="check"><input type="checkbox" id="guides">Repères de couleur</label>
-      <p class="help">Colore les 5 lignes habituelles de chaque clef.</p>
-      <div class="colors" role="radiogroup" aria-label="Couleur des repères">
-        <label class="check" data-guide="red"><input type="radio" name="guideColor" value="red"><span class="swatch"></span>Rouge</label>
-        <label class="check" data-guide="ochre"><input type="radio" name="guideColor" value="ochre"><span class="swatch"></span>Ocre</label>
-        <label class="check" data-guide="green"><input type="radio" name="guideColor" value="green"><span class="swatch"></span>Vert</label>
-        <label class="check" data-guide="blue"><input type="radio" name="guideColor" value="blue"><span class="swatch"></span>Bleu</label>
+      <p class="help">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
+      <div class="line-row">
+        <label for="otherColor">Autres lignes</label>
+        <span class="pick"><span class="swatch" id="otherSwatch"></span><select id="otherColor"></select></span>
       </div>
-      <label class="check"><input type="checkbox" id="softLines">Atténuer les autres lignes</label>
     </details>
     <details class="group">
       <summary>Notes à deviner</summary>
@@ -582,7 +610,7 @@ main[data-soft-lines="true"] .staff-line { stroke: color-mix(in oklab, var(--sta
 const Mode = Object.freeze({ NOTES: "guess", INTERVALS: "interval", EDIT: "edit" });
 const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
-const GuideColor = Object.freeze({ RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
+const LineColor = Object.freeze({ NEUTRAL: "neutral", RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
 const Theme = Object.freeze({ AUTO: "auto", LIGHT: "light", DARK: "dark" });
 const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 
@@ -658,6 +686,21 @@ const CLEFS = [
   new ClefDef(ClefId.FA, "Fa", "Clef de fa", 24, 18, 26, 0, GLYPHS.fClef, 1.048, 2.54),
 ];
 
+class ColorDef {
+  constructor(id, name) {
+    this.id = id;
+    this.name = name;
+  }
+}
+
+const LINE_COLORS = [
+  new ColorDef(LineColor.NEUTRAL, "Neutre"),
+  new ColorDef(LineColor.RED, "Rouge"),
+  new ColorDef(LineColor.OCHRE, "Ocre"),
+  new ColorDef(LineColor.GREEN, "Vert"),
+  new ColorDef(LineColor.BLUE, "Bleu"),
+];
+
 class Reach {
   constructor(below = REACH_DEFAULT, above = REACH_DEFAULT) {
     this[Side.BELOW] = below;
@@ -672,11 +715,12 @@ class Settings {
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
     this.guides = true;
-    this.guideColor = GuideColor.RED;
-    this.softLines = false;
+    this.order = CLEFS.map((c) => c.id);
+    this.colors = new Map([[ClefId.SOL, LineColor.RED], [ClefId.UT, LineColor.OCHRE], [ClefId.FA, LineColor.BLUE]]);
+    this.otherColor = LineColor.NEUTRAL;
     this.names = false;
     this.intervals = new Set(INTERVALS);
-    this.theme = Theme.AUTO;
+    this.theme = Theme.LIGHT;
   }
 
   toJSON() {
@@ -686,8 +730,9 @@ class Settings {
       bottom: this.bottom,
       reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
       guides: this.guides,
-      guideColor: this.guideColor,
-      softLines: this.softLines,
+      order: this.order,
+      colors: Object.fromEntries(this.colors),
+      otherColor: this.otherColor,
       names: this.names,
       intervals: [...this.intervals],
       theme: this.theme,
@@ -712,8 +757,17 @@ class Settings {
       }
     }
     if (typeof raw.guides === "boolean") s.guides = raw.guides;
-    if (Object.values(GuideColor).includes(raw.guideColor)) s.guideColor = raw.guideColor;
-    if (typeof raw.softLines === "boolean") s.softLines = raw.softLines;
+    if (Array.isArray(raw.order)) {
+      const known = [...new Set(raw.order.filter((id) => ids.includes(id)))];
+      s.order = [...known, ...ids.filter((id) => !known.includes(id))];
+    }
+    const colors = Object.values(LineColor);
+    if (raw.colors && typeof raw.colors === "object") {
+      for (const id of ids) {
+        if (colors.includes(raw.colors[id])) s.colors.set(id, raw.colors[id]);
+      }
+    }
+    if (colors.includes(raw.otherColor)) s.otherColor = raw.otherColor;
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
     if (Array.isArray(raw.intervals)) {
@@ -985,6 +1039,19 @@ class ReachControl {
   }
 }
 const reachControls = [];
+
+class ClefRow {
+  constructor(clef, root, check, swatch, select, up, down) {
+    this.clef = clef;
+    this.root = root;
+    this.check = check;
+    this.swatch = swatch;
+    this.select = select;
+    this.up = up;
+    this.down = down;
+  }
+}
+const clefRows = [];
 const statCells = [];
 
 const $ = (id) => document.getElementById(id);
@@ -997,8 +1064,6 @@ const noteSvg = $("noteSvg");
 const answersEl = document.getElementById("answers");
 const answerButtons = [...answersEl.querySelectorAll(".answer")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
-const clefInputs = [...document.querySelectorAll("input[data-clef]")];
-const guideColorInputs = [...document.querySelectorAll("input[name=guideColor]")];
 const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
 const themeInputs = [...document.querySelectorAll("input[name=theme]")];
 
@@ -1067,6 +1132,11 @@ function lineAvailable(clef) {
 
 function visibleClefs() {
   return CLEFS.filter((c) => state.settings.clefs.has(c.id) && lineAvailable(c));
+}
+
+function rankedClefs() {
+  const order = state.settings.order;
+  return visibleClefs().sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
 }
 
 function clefSpan() {
@@ -1150,13 +1220,15 @@ function glyph(parent, d, x, y, s, cls) {
 
 function drawLines(svg, L, x1, x2) {
   const st = state.settings;
-  const visible = visibleClefs();
+  const ranked = st.guides ? rankedClefs() : [];
+  const other = st.guides ? st.otherColor : LineColor.NEUTRAL;
   for (let p = st.bottom; p <= st.top; p += 2) {
-    const ref = st.guides && visible.some((c) => p >= c.staffLow && p <= c.staffHigh);
+    const owner = ranked.find((c) => p >= c.staffLow && p <= c.staffHigh);
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
-      class: ref ? "ref-line" : "staff-line",
-      "stroke-width": ref ? L.refWidth : L.lineWidth,
+      class: owner ? "ref-line" : "staff-line",
+      "data-guide": owner ? st.colors.get(owner.id) : other,
+      "stroke-width": owner ? L.refWidth : L.lineWidth,
     }, svg);
   }
 }
@@ -1172,16 +1244,28 @@ function drawClefs(L) {
   }
 }
 
-function drawNote(parent, L, x, p, cls) {
+function mutedLine(p) {
   const st = state.settings;
+  if (!st.guides || p % 2 !== 0 || p < st.bottom || p > st.top) return false;
+  return !visibleClefs().some((c) => p >= c.staffLow && p <= c.staffHigh);
+}
+
+function ledgerLines(p) {
+  const st = state.settings;
+  const lines = mutedLine(p) ? [p] : [];
+  for (let l = st.top + 2; l <= p; l += 2) lines.push(l);
+  for (let l = st.bottom - 2; l >= p; l -= 2) lines.push(l);
+  return lines;
+}
+
+function drawNote(parent, L, x, p, cls) {
   const g = svgEl("g", { class: cls }, parent);
   const half = (NOTEHEAD_WIDTH / 2 + LEDGER_EXTENSION) * L.s;
   const ledger = (l) => svgEl("line", {
     x1: x - half, x2: x + half, y1: L.y(l), y2: L.y(l),
     class: "ledger", "stroke-width": L.ledgerWidth,
   }, g);
-  for (let l = st.top + 2; l <= p; l += 2) ledger(l);
-  for (let l = st.bottom - 2; l >= p; l -= 2) ledger(l);
+  for (const l of ledgerLines(p)) ledger(l);
   glyph(g, GLYPHS.noteheadWhole, x - (NOTEHEAD_WIDTH / 2) * L.s, L.y(p), L.s, "head");
   return g;
 }
@@ -1449,21 +1533,25 @@ function renderPanels() {
   $("settingsToggle").setAttribute("aria-expanded", String(state.settingsOpen));
   for (const b of modeButtons) b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode));
 
-  for (const input of clefInputs) {
-    const clef = CLEFS.find((c) => c.id === input.dataset.clef);
-    input.checked = st.clefs.has(clef.id) && lineAvailable(clef);
-  }
+  const list = $("clefList");
+  st.order.forEach((id, i) => {
+    const row = clefRows.find((r) => r.clef.id === id);
+    if (list.children[i] !== row.root) list.insertBefore(row.root, list.children[i]);
+    const color = st.colors.get(id);
+    row.check.checked = st.clefs.has(id) && lineAvailable(row.clef);
+    row.select.value = color;
+    row.select.disabled = !st.guides;
+    row.swatch.dataset.guide = color;
+    row.up.disabled = i === 0;
+    row.down.disabled = i === st.order.length - 1;
+  });
   $("guides").checked = st.guides;
   document.documentElement.dataset.theme = st.theme;
   for (const input of themeInputs) input.checked = input.value === st.theme;
-  app.dataset.guide = st.guideColor;
-  for (const input of guideColorInputs) {
-    input.checked = input.value === st.guideColor;
-    input.disabled = !st.guides;
-  }
-  $("softLines").checked = st.softLines;
-  $("softLines").disabled = !st.guides;
-  app.dataset.softLines = String(st.guides && st.softLines);
+  $("otherColor").value = st.otherColor;
+  $("otherColor").disabled = !st.guides;
+  $("otherSwatch").dataset.guide = st.otherColor;
+  app.dataset.guides = String(st.guides);
   for (const input of intervalInputs) {
     input.checked = st.intervals.has(Number(input.dataset.interval));
     input.disabled = input.checked && st.intervals.size === 1;
@@ -1874,38 +1962,18 @@ $("settingsClose").addEventListener("click", () => {
   $("settingsToggle").focus();
 });
 
-for (const input of clefInputs) {
-  input.addEventListener("change", () => {
-    const st = state.settings;
-    const clef = CLEFS.find((c) => c.id === input.dataset.clef);
-    if (input.checked) {
-      st.clefs.add(clef.id);
-      st.top = Math.max(st.top, clef.staffHigh);
-      st.bottom = Math.min(st.bottom, clef.staffLow);
-    } else {
-      st.clefs.delete(clef.id);
-    }
-    settingsChanged();
-  });
-}
 for (const input of themeInputs) {
   input.addEventListener("change", () => {
     state.settings.theme = input.value;
     settingsChanged();
   });
 }
-for (const input of guideColorInputs) {
-  input.addEventListener("change", () => {
-    state.settings.guideColor = input.value;
-    settingsChanged();
-  });
-}
-$("guides").addEventListener("change", (e) => {
-  state.settings.guides = e.target.checked;
+$("otherColor").addEventListener("change", (e) => {
+  state.settings.otherColor = e.target.value;
   settingsChanged();
 });
-$("softLines").addEventListener("change", (e) => {
-  state.settings.softLines = e.target.checked;
+$("guides").addEventListener("change", (e) => {
+  state.settings.guides = e.target.checked;
   settingsChanged();
 });
 for (const input of intervalInputs) {
@@ -1973,6 +2041,65 @@ function stepButton(text, label, parent) {
   button.setAttribute("aria-label", label);
   parent.append(button);
   return button;
+}
+
+function fillColors(select) {
+  for (const color of LINE_COLORS) select.append(new Option(color.name, color.id));
+}
+
+function moveClef(row, delta) {
+  const order = state.settings.order;
+  const i = order.indexOf(row.clef.id);
+  const j = i + delta;
+  if (j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  settingsChanged();
+  const [same, other] = delta < 0 ? [row.up, row.down] : [row.down, row.up];
+  (same.disabled ? other : same).focus();
+}
+
+fillColors($("otherColor"));
+for (const clef of CLEFS) {
+  const root = document.createElement("div");
+  root.className = "clef-row";
+  const name = document.createElement("label");
+  name.className = "check";
+  const check = document.createElement("input");
+  check.type = "checkbox";
+  name.append(check, clef.label);
+  const pick = document.createElement("span");
+  pick.className = "pick";
+  const swatch = document.createElement("span");
+  swatch.className = "swatch";
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", `${clef.label} : couleur`);
+  fillColors(select);
+  pick.append(swatch, select);
+  const mini = document.createElement("span");
+  mini.className = "mini";
+  const up = stepButton("↑", `${clef.label} : monter dans la liste`, mini);
+  const down = stepButton("↓", `${clef.label} : descendre dans la liste`, mini);
+  root.append(name, pick, mini);
+  $("clefList").append(root);
+  const row = new ClefRow(clef, root, check, swatch, select, up, down);
+  clefRows.push(row);
+  check.addEventListener("change", () => {
+    const st = state.settings;
+    if (check.checked) {
+      st.clefs.add(clef.id);
+      st.top = Math.max(st.top, clef.staffHigh);
+      st.bottom = Math.min(st.bottom, clef.staffLow);
+    } else {
+      st.clefs.delete(clef.id);
+    }
+    settingsChanged();
+  });
+  select.addEventListener("change", () => {
+    state.settings.colors.set(clef.id, select.value);
+    settingsChanged();
+  });
+  up.addEventListener("click", () => moveClef(row, -1));
+  down.addEventListener("click", () => moveClef(row, 1));
 }
 
 for (const clef of CLEFS) {
