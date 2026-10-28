@@ -636,7 +636,12 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
       <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
     </details>
     <details class="group">
-      <summary>Thème</summary>
+      <summary>Affichage</summary>
+      <div class="stepper">
+        <span>Taille de la portée : <b id="staffSize"></b></span>
+        <button type="button" id="staffSizeRemove" aria-label="Portée plus petite">−</button>
+        <button type="button" id="staffSizeAdd" aria-label="Portée plus grande">+</button>
+      </div>
       <div class="options">
         <label class="check"><input type="radio" name="theme" value="auto">Auto</label>
         <label class="check"><input type="radio" name="theme" value="light">Clair</label>
@@ -701,6 +706,10 @@ const REPEAT_DELAY = 400;
 const REPEAT_INTERVAL = 90;
 const SPACE_MAX = 24;
 const STAFF_FILL = 0.7;
+const SIZE_MIN = 40;
+const SIZE_MAX = 200;
+const SIZE_STEP = 10;
+const SIZE_DEFAULT = 100;
 const STACK_ROW = 44;
 const STACK_GAP = 4;
 const STACK_STAFF_MIN = 200;
@@ -823,6 +832,7 @@ class Settings {
     this.groupSize = GROUP_DEFAULT;
     this.readTime = READ_TIME_DEFAULT;
     this.answerTime = ANSWER_TIME_DEFAULT;
+    this.staffSize = SIZE_DEFAULT;
   }
 
   toJSON() {
@@ -841,6 +851,7 @@ class Settings {
       groupSize: this.groupSize,
       readTime: this.readTime,
       answerTime: this.answerTime,
+      staffSize: this.staffSize,
     };
   }
 
@@ -879,6 +890,8 @@ class Settings {
     const isTime = (v) => Number.isInteger(v) && v >= TIME_MIN && v <= TIME_MAX && v % TIME_STEP === 0;
     if (isTime(raw.readTime)) s.readTime = raw.readTime;
     if (isTime(raw.answerTime)) s.answerTime = raw.answerTime;
+    const isSize = (v) => Number.isInteger(v) && v >= SIZE_MIN && v <= SIZE_MAX && v % SIZE_STEP === 0;
+    if (isSize(raw.staffSize)) s.staffSize = raw.staffSize;
     if (Array.isArray(raw.intervals)) {
       const intervals = new Set(raw.intervals.filter((n) => INTERVALS.includes(n)));
       if (intervals.size) s.intervals = intervals;
@@ -1491,12 +1504,14 @@ function computeLayout() {
   const reviewColumns = Math.floor((REVIEW_VISIBLE_COLUMNS * NOTE_COLUMN) / columnSpaces);
   const visibleColumns = reviewing ? clamp(history.length, EDIT_VISIBLE_COLUMNS, reviewColumns) : EDIT_VISIBLE_COLUMNS;
   const minNotesSpaces = columnar ? 2 * NOTE_PAD + visibleColumns * columnSpaces : guessSpaces;
-  const spaceMin = reviewing ? REVIEW_SPACE_MIN : SPACE_MIN;
+  const size = state.settings.staffSize / SIZE_DEFAULT;
+  const spaceMin = (reviewing ? REVIEW_SPACE_MIN : SPACE_MIN) * Math.min(1, size);
+  const stretch = columnar ? Math.max(1, size) : 1;
   const w = staffEl.clientWidth;
   const h = staffEl.clientHeight;
   const clefScale = w / (clefSpacesAt(1) + minNotesSpaces) < h / heightSpaces ? CLEF_TIGHT : 1;
   const clefSpaces = clefSpacesAt(clefScale);
-  const fit = (avail) => clamp(Math.min((avail * STAFF_FILL) / heightSpaces, w / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX);
+  const fit = (avail) => clamp(Math.min((avail * STAFF_FILL * size) / heightSpaces, (w * stretch) / (clefSpaces + minNotesSpaces)), spaceMin, SPACE_MAX * size);
 
   let s = fit(h);
   if (columnar && SCROLLBAR > 0 && (clefSpaces + notesSpaces) * s > w) s = fit(h - SCROLLBAR);
@@ -1991,6 +2006,9 @@ function renderPanels() {
   $("answerTime").textContent = `${TIME.format(st.answerTime / 1000)}\u00a0s`;
   $("answerTimeRemove").disabled = st.answerTime <= TIME_MIN;
   $("answerTimeAdd").disabled = st.answerTime >= TIME_MAX;
+  $("staffSize").textContent = `${st.staffSize}\u00a0%`;
+  $("staffSizeRemove").disabled = st.staffSize <= SIZE_MIN;
+  $("staffSizeAdd").disabled = st.staffSize >= SIZE_MAX;
   const shown = TIME.format(st.readTime / 1000);
   const extra = TIME.format(st.answerTime / 1000);
   $("groupTime").textContent = `Les notes restent ${shown}\u00a0s à l'écran, puis tu as encore ${extra}\u00a0s pour finir de les nommer.`;
@@ -2586,15 +2604,17 @@ for (const clef of CLEFS) {
     }
   }
 }
-const groupSteppers = [
+const settingSteppers = [
   ["groupSizeRemove", (s) => { s.groupSize = Math.max(GROUP_MIN, s.groupSize - 1); }],
   ["groupSizeAdd", (s) => { s.groupSize = Math.min(GROUP_MAX, s.groupSize + 1); }],
   ["readTimeRemove", (s) => { s.readTime = Math.max(TIME_MIN, s.readTime - TIME_STEP); }],
   ["readTimeAdd", (s) => { s.readTime = Math.min(TIME_MAX, s.readTime + TIME_STEP); }],
   ["answerTimeRemove", (s) => { s.answerTime = Math.max(TIME_MIN, s.answerTime - TIME_STEP); }],
   ["answerTimeAdd", (s) => { s.answerTime = Math.min(TIME_MAX, s.answerTime + TIME_STEP); }],
+  ["staffSizeRemove", (s) => { s.staffSize = Math.max(SIZE_MIN, s.staffSize - SIZE_STEP); }],
+  ["staffSizeAdd", (s) => { s.staffSize = Math.min(SIZE_MAX, s.staffSize + SIZE_STEP); }],
 ];
-for (const [id, change] of groupSteppers) {
+for (const [id, change] of settingSteppers) {
   repeatable($(id), () => {
     change(state.settings);
     settingsChanged();
