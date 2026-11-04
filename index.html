@@ -360,13 +360,12 @@ main.settings-open .dock { display: none; }
   .settings { --mini: 32px; }
   .mini button { min-height: 36px; }
 }
-.clef-row, .line-row {
+.clef-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 8em calc(2 * var(--mini) + 2px);
   align-items: center;
   gap: var(--s2);
 }
-.line-row { min-height: 48px; }
 .clef-lines { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s2); margin: calc(-1 * var(--s1)) 0 var(--s2) 28px; }
 .clef-lines span { color: var(--muted); font-size: 14px; }
 .segments { display: flex; gap: var(--s1); }
@@ -380,7 +379,6 @@ main[data-mode="group"] .segments button[aria-pressed="true"]::before { content:
 .pick { display: flex; align-items: center; gap: 6px; }
 .pick select { flex: 1; min-width: 0; }
 .pick:has(:disabled) .swatch { opacity: .4; }
-.line-row .swatch { background: color-mix(in oklab, var(--guide) var(--mute), var(--surface)); }
 .delta { color: var(--muted); font-size: 14px; }
 .settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
@@ -585,10 +583,6 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
       <div class="row not-groups"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
       <label class="check not-groups"><input type="checkbox" id="guides">Repères de couleur</label>
       <p class="help not-groups">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
-      <div class="line-row not-groups">
-        <label for="otherColor">Autres lignes</label>
-        <span class="pick"><span class="swatch" id="otherSwatch"></span><select id="otherColor"></select></span>
-      </div>
     </details>
     <details class="group for-groups" open>
       <summary>Groupes</summary>
@@ -869,7 +863,6 @@ class Settings {
     this.staffLines = new Map(FAMILIES.map((f) => [f.id, f.defaultLine]));
     this.groupLines = new Map(FAMILIES.map((f) => [f.id, new Set([f.defaultLine])]));
     this.colors = new Map([[ClefId.SOL, LineColor.RED], [ClefId.UT, LineColor.OCHRE], [ClefId.FA, LineColor.BLUE]]);
-    this.otherColor = LineColor.NEUTRAL;
     this.names = false;
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
@@ -890,7 +883,6 @@ class Settings {
       staffLines: Object.fromEntries(this.staffLines),
       groupLines: Object.fromEntries([...this.groupLines].map(([id, lines]) => [id, [...lines]])),
       colors: Object.fromEntries(this.colors),
-      otherColor: this.otherColor,
       names: this.names,
       intervals: [...this.intervals],
       theme: this.theme,
@@ -937,7 +929,6 @@ class Settings {
         if (colors.includes(raw.colors[id])) s.colors.set(id, raw.colors[id]);
       }
     }
-    if (colors.includes(raw.otherColor)) s.otherColor = raw.otherColor;
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
     if (Number.isInteger(raw.groupSize) && raw.groupSize >= GROUP_MIN && raw.groupSize <= GROUP_MAX) s.groupSize = raw.groupSize;
@@ -1593,13 +1584,12 @@ function drawLines(svg, L, x1, x2) {
   const st = state.settings;
   const v = L.view;
   const ranked = v.guides ? rankedClefs() : [];
-  const other = v.guides ? st.otherColor : LineColor.NEUTRAL;
   for (let p = v.bottom; p <= v.top; p += 2) {
     const owner = ranked.find((c) => p >= c.staffLow && p <= c.staffHigh);
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
       class: owner ? "ref-line" : "staff-line",
-      "data-guide": owner ? st.colors.get(owner.id) : other,
+      "data-guide": owner ? st.colors.get(owner.id) : LineColor.NEUTRAL,
       "stroke-width": owner ? L.refWidth : L.lineWidth,
     }, svg);
   }
@@ -2033,9 +2023,6 @@ function renderPanels() {
   $("guides").checked = st.guides;
   document.documentElement.dataset.theme = st.theme;
   for (const input of themeInputs) input.checked = input.value === st.theme;
-  $("otherColor").value = st.otherColor;
-  $("otherColor").disabled = !st.guides;
-  $("otherSwatch").dataset.guide = st.otherColor;
   app.dataset.guides = String(st.guides && state.mode !== Mode.GROUPS);
   for (const input of intervalInputs) {
     input.checked = st.intervals.has(Number(input.dataset.interval));
@@ -2510,10 +2497,6 @@ for (const input of themeInputs) {
     settingsChanged();
   });
 }
-$("otherColor").addEventListener("change", (e) => {
-  state.settings.otherColor = e.target.value;
-  settingsChanged();
-});
 $("guides").addEventListener("change", (e) => {
   state.settings.guides = e.target.checked;
   settingsChanged();
@@ -2600,7 +2583,6 @@ function moveClef(row, delta) {
   (same.disabled ? other : same).focus();
 }
 
-fillColors($("otherColor"));
 function showStaff(family) {
   const st = state.settings;
   const clef = staffClef(family);
