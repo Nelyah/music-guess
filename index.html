@@ -367,6 +367,11 @@ main.settings-open .dock { display: none; }
   gap: var(--s2);
 }
 .line-row { min-height: 48px; }
+.clef-lines { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 0 0 var(--s2) 28px; }
+.clef-lines span { color: var(--muted); font-size: 14px; margin-right: var(--s1); }
+.clef-lines button { min-width: 44px; padding: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.clef-lines button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.clef-lines button[aria-pressed="true"]:disabled { opacity: 1; cursor: default; }
 .pick { display: flex; align-items: center; gap: 6px; }
 .pick select { flex: 1; min-width: 0; }
 .pick:has(:disabled) .swatch { opacity: .4; }
@@ -571,6 +576,7 @@ main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) 
     <details class="group" open>
       <summary>Clefs</summary>
       <div id="clefList"></div>
+      <p class="help for-groups">Plusieurs lignes possibles par clef : chaque groupe en tire une au hasard.</p>
       <div class="row not-groups"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
       <label class="check not-groups"><input type="checkbox" id="guides">Repères de couleur</label>
       <p class="help not-groups">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
@@ -746,14 +752,14 @@ const GLYPHS = Object.freeze({
   noteheadWhole: "M216 125C83 125 0 70 0 2C0 -65 57 -125 206 -125C370 -125 422 -68 422 2C422 73 309 125 216 125ZM111 63C122 98 159 103 190 103C259 103 314 29 314 -31C314 -38 313 -44 312 -50C307 -75 293 -92 268 -98C258 -101 247 -102 237 -102C228 -102 220 -101 211 -98C194 -93 178 -84 164 -72C156 -65 149 -58 143 -50C123 -27 108 7 108 39C108 47 109 55 111 63Z",
 });
 
-class ClefDef {
-  constructor(id, name, label, line, staffLow, staffHigh, column, glyph, up, down) {
+class ClefFamily {
+  constructor(id, name, label, pitch, lines, defaultLine, column, glyph, up, down) {
     this.id = id;
     this.name = name;
     this.label = label;
-    this.line = line;
-    this.staffLow = staffLow;
-    this.staffHigh = staffHigh;
+    this.pitch = pitch;
+    this.lines = lines;
+    this.defaultLine = defaultLine;
     this.column = column;
     this.glyph = glyph;
     this.up = up;
@@ -761,11 +767,42 @@ class ClefDef {
   }
 }
 
-const CLEFS = [
-  new ClefDef(ClefId.SOL, "Sol", "Clef de sol", 32, 30, 38, 0, GLYPHS.gClef, 4.392, 2.632),
-  new ClefDef(ClefId.UT, "Ut", "Clef d'ut", 28, 24, 32, 1, GLYPHS.cClef, 2.024, 2.024),
-  new ClefDef(ClefId.FA, "Fa", "Clef de fa", 24, 18, 26, 0, GLYPHS.fClef, 1.048, 2.54),
+class ClefDef {
+  constructor(family, staffLine, staffLow, column = family.column) {
+    this.family = family;
+    this.staffLine = staffLine;
+    this.staffLow = staffLow;
+    this.staffHigh = staffLow + 8;
+    this.line = staffLow + 2 * (staffLine - 1);
+    this.column = column;
+  }
+
+  get id() {
+    return this.family.id;
+  }
+
+  get glyph() {
+    return this.family.glyph;
+  }
+
+  get up() {
+    return this.family.up;
+  }
+
+  get down() {
+    return this.family.down;
+  }
+}
+
+const FAMILIES = [
+  new ClefFamily(ClefId.SOL, "Sol", "Clef de sol", 32, [2], 2, 0, GLYPHS.gClef, 4.392, 2.632),
+  new ClefFamily(ClefId.UT, "Ut", "Clef d'ut", 28, [1, 2, 3, 4], 3, 1, GLYPHS.cClef, 2.024, 2.024),
+  new ClefFamily(ClefId.FA, "Fa", "Clef de fa", 24, [3, 4], 4, 0, GLYPHS.fClef, 1.048, 2.54),
 ];
+
+const CLEFS = FAMILIES.flatMap((f) => f.lines.map((n) => new ClefDef(f, n, f.pitch - 2 * (n - 1))));
+const clefOf = (id, n) => CLEFS.find((c) => c.id === id && c.staffLine === n);
+const lineName = (n) => (n === 1 ? "1re ligne" : `${n}e ligne`);
 
 class ColorDef {
   constructor(id, name) {
@@ -823,7 +860,9 @@ class Settings {
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
     this.guides = true;
-    this.order = CLEFS.map((c) => c.id);
+    this.order = FAMILIES.map((f) => f.id);
+    this.staffLines = new Map(FAMILIES.map((f) => [f.id, f.defaultLine]));
+    this.groupLines = new Map(FAMILIES.map((f) => [f.id, new Set([f.defaultLine])]));
     this.colors = new Map([[ClefId.SOL, LineColor.RED], [ClefId.UT, LineColor.OCHRE], [ClefId.FA, LineColor.BLUE]]);
     this.otherColor = LineColor.NEUTRAL;
     this.names = false;
@@ -843,6 +882,8 @@ class Settings {
       reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
       guides: this.guides,
       order: this.order,
+      staffLines: Object.fromEntries(this.staffLines),
+      groupLines: Object.fromEntries([...this.groupLines].map(([id, lines]) => [id, [...lines]])),
       colors: Object.fromEntries(this.colors),
       otherColor: this.otherColor,
       names: this.names,
@@ -871,6 +912,14 @@ class Settings {
         const pair = raw.reach[id];
         if (Array.isArray(pair) && pair.length === 2 && pair.every(isReach)) s.reach.set(id, new Reach(pair[0], pair[1]));
       }
+    }
+    for (const f of FAMILIES) {
+      const line = raw.staffLines?.[f.id];
+      if (f.lines.includes(line)) s.staffLines.set(f.id, line);
+      const lines = raw.groupLines?.[f.id];
+      if (!Array.isArray(lines)) continue;
+      const known = new Set(lines.filter((n) => f.lines.includes(n)));
+      if (known.size) s.groupLines.set(f.id, known);
     }
     if (typeof raw.guides === "boolean") s.guides = raw.guides;
     if (Array.isArray(raw.order)) {
@@ -1302,7 +1351,7 @@ class ReachControl {
 const reachControls = [];
 
 class ClefRow {
-  constructor(clef, root, check, swatch, select, up, down) {
+  constructor(clef, root, check, swatch, select, up, down, chips) {
     this.clef = clef;
     this.root = root;
     this.check = check;
@@ -1310,6 +1359,7 @@ class ClefRow {
     this.select = select;
     this.up = up;
     this.down = down;
+    this.chips = chips;
   }
 }
 const clefRows = [];
@@ -1394,13 +1444,18 @@ function lineAvailable(clef) {
   return state.mode === Mode.GROUPS || (clef.line >= state.settings.bottom && clef.line <= state.settings.top);
 }
 
+function staffClef(family) {
+  return clefOf(family.id, state.settings.staffLines.get(family.id));
+}
+
 function groupClefs() {
-  const clefs = CLEFS.filter((c) => state.settings.clefs.has(c.id));
-  return clefs.length ? clefs : [CLEFS[0]];
+  const st = state.settings;
+  const clefs = CLEFS.filter((c) => st.clefs.has(c.id) && st.groupLines.get(c.id).has(c.staffLine));
+  return clefs.length ? clefs : [staffClef(FAMILIES[0])];
 }
 
 function plainClef(c) {
-  return new ClefDef(c.id, c.name, c.label, c.line + PLAIN_LOW - c.staffLow, PLAIN_LOW, PLAIN_HIGH, 0, c.glyph, c.up, c.down);
+  return new ClefDef(c.family, c.staffLine, PLAIN_LOW, 0);
 }
 
 function groupRange() {
@@ -1432,7 +1487,7 @@ function groupSize() {
 }
 
 function visibleClefs() {
-  return CLEFS.filter((c) => state.settings.clefs.has(c.id) && lineAvailable(c));
+  return FAMILIES.filter((f) => state.settings.clefs.has(f.id)).map(staffClef).filter(lineAvailable);
 }
 
 function rankedClefs() {
@@ -1956,7 +2011,14 @@ function renderPanels() {
     const row = clefRows.find((r) => r.clef.id === id);
     if (list.children[i] !== row.root) list.insertBefore(row.root, list.children[i]);
     const color = st.colors.get(id);
-    row.check.checked = st.clefs.has(id) && lineAvailable(row.clef);
+    row.check.checked = st.clefs.has(id) && lineAvailable(staffClef(row.clef));
+    const groupLines = st.groupLines.get(id);
+    row.chips.forEach((chip, k) => {
+      const n = row.clef.lines[k];
+      const on = state.mode === Mode.GROUPS ? groupLines.has(n) : st.staffLines.get(id) === n;
+      chip.setAttribute("aria-pressed", String(on));
+      chip.disabled = state.mode === Mode.GROUPS && on && groupLines.size === 1;
+    });
     row.select.value = color;
     row.select.disabled = !st.guides;
     row.swatch.dataset.guide = color;
@@ -1983,7 +2045,7 @@ function renderPanels() {
   $("lineCount").textContent = `${lines} ligne${lines > 1 ? "s" : ""} au total.`;
   const visible = visibleClefs();
   for (const control of reachControls) {
-    const on = visible.includes(control.clef);
+    const on = visible.some((c) => c.family === control.clef);
     const value = st.reach.get(control.clef.id)[control.side];
     control.name.classList.toggle("off", !on);
     control.output.textContent = String(value);
@@ -2502,8 +2564,8 @@ function repeatable(button, action) {
 for (const [id, change] of steppers) {
   repeatable($(id), () => {
     change(state.settings);
-    for (const clef of CLEFS) {
-      if (!lineAvailable(clef)) state.settings.clefs.delete(clef.id);
+    for (const family of FAMILIES) {
+      if (!lineAvailable(staffClef(family))) state.settings.clefs.delete(family.id);
     }
     settingsChanged();
   });
@@ -2534,7 +2596,27 @@ function moveClef(row, delta) {
 }
 
 fillColors($("otherColor"));
-for (const clef of CLEFS) {
+function showStaff(family) {
+  const st = state.settings;
+  const clef = staffClef(family);
+  st.top = Math.max(st.top, clef.staffHigh);
+  st.bottom = Math.min(st.bottom, clef.staffLow);
+}
+
+function pickLine(family, n) {
+  const st = state.settings;
+  if (state.mode === Mode.GROUPS) {
+    const lines = st.groupLines.get(family.id);
+    if (!lines.has(n)) lines.add(n);
+    else if (lines.size > 1) lines.delete(n);
+  } else {
+    st.staffLines.set(family.id, n);
+    if (st.clefs.has(family.id)) showStaff(family);
+  }
+  settingsChanged();
+}
+
+for (const clef of FAMILIES) {
   const root = document.createElement("div");
   root.className = "clef-row";
   const name = document.createElement("label");
@@ -2555,15 +2637,30 @@ for (const clef of CLEFS) {
   const up = stepButton("↑", `${clef.label} : monter dans la liste`, mini);
   const down = stepButton("↓", `${clef.label} : descendre dans la liste`, mini);
   root.append(name, pick, mini);
+  const chips = [];
+  if (clef.lines.length > 1) {
+    const lines = document.createElement("div");
+    lines.className = "clef-lines";
+    lines.setAttribute("role", "group");
+    lines.setAttribute("aria-label", `${clef.label} : ligne`);
+    const caption = document.createElement("span");
+    caption.textContent = "Ligne";
+    lines.append(caption);
+    for (const n of clef.lines) {
+      const chip = stepButton(String(n), `${clef.label} ${lineName(n)}`, lines);
+      chip.addEventListener("click", () => pickLine(clef, n));
+      chips.push(chip);
+    }
+    root.append(lines);
+  }
   $("clefList").append(root);
-  const row = new ClefRow(clef, root, check, swatch, select, up, down);
+  const row = new ClefRow(clef, root, check, swatch, select, up, down, chips);
   clefRows.push(row);
   check.addEventListener("change", () => {
     const st = state.settings;
     if (check.checked) {
       st.clefs.add(clef.id);
-      st.top = Math.max(st.top, clef.staffHigh);
-      st.bottom = Math.min(st.bottom, clef.staffLow);
+      showStaff(clef);
     } else {
       st.clefs.delete(clef.id);
     }
@@ -2577,7 +2674,7 @@ for (const clef of CLEFS) {
   down.addEventListener("click", () => moveClef(row, 1));
 }
 
-for (const clef of CLEFS) {
+for (const clef of FAMILIES) {
   const grid = $("reach");
   const name = document.createElement("span");
   name.className = "reach-name";
