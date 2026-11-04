@@ -369,9 +369,10 @@ main.settings-open .dock { display: none; }
 .line-row { min-height: 48px; }
 .clef-lines { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s2); margin: calc(-1 * var(--s1)) 0 var(--s2) 28px; }
 .clef-lines span { color: var(--muted); font-size: 14px; }
-.segments { display: flex; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--control); border-radius: 8px; }
-.segments button { min-width: 32px; min-height: 28px; padding: 0; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; background: transparent; }
-.segments button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.segments { display: flex; gap: 2px; }
+.segments button { min-width: 32px; min-height: 28px; padding: 0; border: 0; border-radius: 6px; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted); background: transparent; }
+.segments button:hover:not(:disabled) { color: var(--ink); }
+.segments button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; box-shadow: inset 0 0 0 1px var(--accent); }
 .segments button[aria-pressed="true"]:disabled { opacity: 1; cursor: default; }
 .pick { display: flex; align-items: center; gap: 6px; }
 .pick select { flex: 1; min-width: 0; }
