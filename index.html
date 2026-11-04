@@ -371,7 +371,8 @@ main.settings-open .dock { display: none; }
 .clef-lines span { color: var(--muted); font-size: 14px; }
 .segments { display: flex; gap: 2px; }
 .segments button { min-width: 32px; min-height: 28px; padding: 0; border: 0; border-radius: 6px; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted); background: transparent; }
-.segments button:hover:not(:disabled) { color: var(--ink); }
+.segments button:hover:not(:disabled) { color: var(--ink); background: color-mix(in oklab, var(--ink) 8%, transparent); }
+.segments button[aria-pressed="true"]:hover:not(:disabled) { color: var(--accent); background: color-mix(in oklab, var(--accent) 22%, var(--accent-soft)); }
 .segments button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; box-shadow: inset 0 0 0 1px var(--accent); }
 .segments button[aria-pressed="true"]:disabled { opacity: 1; cursor: default; }
 .pick { display: flex; align-items: center; gap: 6px; }
