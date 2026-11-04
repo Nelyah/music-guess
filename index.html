@@ -361,11 +361,26 @@ main.settings-open .dock { display: none; }
   .mini button { min-height: 36px; }
 }
 .clef-row {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8em calc(2 * var(--mini) + 2px);
+  grid-template-columns: minmax(0, 1fr) 8em 64px;
   align-items: center;
   gap: var(--s2);
+  border-radius: 10px;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
+.clef-row.dragging {
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border), 0 6px 18px rgb(0 0 0 / .18);
+  transition: box-shadow .2s ease;
+}
+#clefList.settling .clef-row { transition: none; }
+.grip { width: 64px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.grip:hover:not(:disabled) { border-color: transparent; color: var(--ink); background: color-mix(in oklab, var(--ink) 8%, transparent); }
+.grip:active:not(:disabled) { transform: none; background: color-mix(in oklab, var(--ink) 8%, transparent); }
+.dragging .grip { cursor: grabbing; color: var(--ink); }
+.grip svg { display: block; width: 28px; height: 20px; margin: auto; fill: currentColor; }
 .clef-lines { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s2); margin: calc(-1 * var(--s1)) 0 var(--s2) 28px; }
 .clef-lines span { color: var(--muted); font-size: 14px; }
 .segments { display: flex; gap: var(--s1); }
@@ -384,7 +399,7 @@ main[data-mode="group"] .segments button[aria-pressed="true"]::before { content:
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 .for-groups { display: none; }
 main[data-mode="group"] .for-groups { display: block; }
-main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .pick, main[data-mode="group"] .clef-row .mini { display: none; }
+main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .pick, main[data-mode="group"] .clef-row .grip { display: none; }
 main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 
 .ledger, .barline { stroke: var(--staff); }
@@ -1347,15 +1362,25 @@ class ReachControl {
 const reachControls = [];
 
 class ClefRow {
-  constructor(clef, root, check, swatch, select, up, down, chips) {
+  constructor(clef, root, check, swatch, select, grip, chips) {
     this.clef = clef;
     this.root = root;
     this.check = check;
     this.swatch = swatch;
     this.select = select;
-    this.up = up;
-    this.down = down;
+    this.grip = grip;
     this.chips = chips;
+  }
+}
+
+class ClefDrag {
+  constructor(row, pointerId, startY, rows, from) {
+    this.row = row;
+    this.pointerId = pointerId;
+    this.startY = startY;
+    this.rows = rows;
+    this.from = from;
+    this.to = from;
   }
 }
 const clefRows = [];
@@ -2017,8 +2042,6 @@ function renderPanels() {
     row.select.value = color;
     row.select.disabled = !st.guides;
     row.swatch.dataset.guide = color;
-    row.up.disabled = i === 0;
-    row.down.disabled = i === st.order.length - 1;
   });
   $("guides").checked = st.guides;
   document.documentElement.dataset.theme = st.theme;
@@ -2572,15 +2595,108 @@ function fillColors(select) {
   for (const color of LINE_COLORS) select.append(new Option(color.name, color.id));
 }
 
-function moveClef(row, delta) {
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+let clefDrag = null;
+
+function reorderClefs(change, lifted = null) {
+  const list = $("clefList");
+  const before = clefRows.map((r) => r.root.getBoundingClientRect().top);
+  list.classList.add("settling");
+  for (const r of clefRows) {
+    for (const animation of r.root.getAnimations()) animation.cancel();
+    r.root.style.transform = "";
+  }
+  change();
+  clefRows.forEach((r, k) => {
+    const dy = before[k] - r.root.getBoundingClientRect().top;
+    const glide = dy && !reducedMotion.matches
+      ? r.root.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 220, easing: "ease-out" })
+      : null;
+    if (r !== lifted) return;
+    const land = () => {
+      if (clefDrag?.row !== r) r.root.classList.remove("dragging");
+    };
+    if (glide) glide.finished.then(land, land);
+    else land();
+  });
+  list.classList.remove("settling");
+}
+
+function startClefDrag(row, event) {
+  if (event.button !== 0 || clefDrag) return;
+  const rows = state.settings.order.map((id) => clefRows.find((r) => r.clef.id === id));
+  for (const r of rows) {
+    for (const animation of r.root.getAnimations()) animation.cancel();
+  }
+  row.grip.setPointerCapture(event.pointerId);
+  row.root.classList.add("dragging");
+  clefDrag = new ClefDrag(row, event.pointerId, event.clientY, rows, rows.indexOf(row));
+}
+
+function moveClefDrag(event) {
+  const drag = clefDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  const own = drag.row.root;
+  const first = drag.rows[0].root;
+  const last = drag.rows.at(-1).root;
+  const dy = clamp(
+    event.clientY - drag.startY,
+    first.offsetTop - own.offsetTop,
+    last.offsetTop + last.offsetHeight - own.offsetTop - own.offsetHeight,
+  );
+  const top = own.offsetTop + dy;
+  const bottom = top + own.offsetHeight;
+  const mid = (r) => r.root.offsetTop + r.root.offsetHeight / 2;
+  drag.to = drag.from;
+  drag.rows.forEach((r, k) => {
+    if (k < drag.from && top < mid(r)) drag.to = Math.min(drag.to, k);
+    if (k > drag.from && bottom > mid(r)) drag.to = Math.max(drag.to, k);
+  });
+  drag.rows.forEach((r, k) => {
+    if (r === drag.row) return;
+    let shift = 0;
+    if (k > drag.from && k <= drag.to) shift = -own.offsetHeight;
+    else if (k < drag.from && k >= drag.to) shift = own.offsetHeight;
+    r.root.style.transform = shift ? `translateY(${shift}px)` : "";
+  });
+  own.style.transform = `translateY(${dy}px)`;
+}
+
+function endClefDrag(event) {
+  const drag = clefDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  clefDrag = null;
+  const keep = event.type === "pointerup" && drag.to !== drag.from;
+  reorderClefs(() => {
+    if (!keep) return;
+    const order = state.settings.order;
+    order.splice(drag.to, 0, ...order.splice(drag.from, 1));
+    settingsChanged();
+  }, drag.row);
+}
+
+function nudgeClef(row, delta) {
   const order = state.settings.order;
   const i = order.indexOf(row.clef.id);
   const j = i + delta;
-  if (j < 0 || j >= order.length) return;
-  [order[i], order[j]] = [order[j], order[i]];
-  settingsChanged();
-  const [same, other] = delta < 0 ? [row.up, row.down] : [row.down, row.up];
-  (same.disabled ? other : same).focus();
+  if (clefDrag || j < 0 || j >= order.length) return;
+  reorderClefs(() => {
+    [order[i], order[j]] = [order[j], order[i]];
+    settingsChanged();
+  });
+  row.grip.focus();
+}
+
+function gripButton(clef) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "grip";
+  button.setAttribute("aria-label", `${clef.label} : déplacer dans la liste (flèches haut et bas)`);
+  const icon = svgEl("svg", { viewBox: "0 0 28 20", "aria-hidden": "true" }, button);
+  for (const cy of [5, 10, 15]) {
+    for (const cx of [6, 14, 22]) svgEl("circle", { cx, cy, r: 1.6 }, icon);
+  }
+  return button;
 }
 
 function showStaff(family) {
@@ -2619,11 +2735,8 @@ for (const clef of FAMILIES) {
   select.setAttribute("aria-label", `${clef.label} : couleur`);
   fillColors(select);
   pick.append(swatch, select);
-  const mini = document.createElement("span");
-  mini.className = "mini";
-  const up = stepButton("↑", `${clef.label} : monter dans la liste`, mini);
-  const down = stepButton("↓", `${clef.label} : descendre dans la liste`, mini);
-  root.append(name, pick, mini);
+  const grip = gripButton(clef);
+  root.append(name, pick, grip);
   const chips = [];
   if (clef.lines.length > 1) {
     const lines = document.createElement("div");
@@ -2643,7 +2756,7 @@ for (const clef of FAMILIES) {
     root.append(lines);
   }
   $("clefList").append(root);
-  const row = new ClefRow(clef, root, check, swatch, select, up, down, chips);
+  const row = new ClefRow(clef, root, check, swatch, select, grip, chips);
   clefRows.push(row);
   check.addEventListener("change", () => {
     const st = state.settings;
@@ -2659,8 +2772,23 @@ for (const clef of FAMILIES) {
     state.settings.colors.set(clef.id, select.value);
     settingsChanged();
   });
-  up.addEventListener("click", () => moveClef(row, -1));
-  down.addEventListener("click", () => moveClef(row, 1));
+  grip.addEventListener("pointerdown", (event) => startClefDrag(row, event));
+  grip.addEventListener("pointermove", moveClefDrag);
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) grip.addEventListener(type, endClefDrag);
+  grip.addEventListener("keydown", (event) => {
+    switch (event.key) {
+      case "ArrowUp":
+        nudgeClef(row, -1);
+        break;
+      case "ArrowDown":
+        nudgeClef(row, 1);
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  });
 }
 
 for (const clef of FAMILIES) {
