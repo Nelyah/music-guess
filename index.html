@@ -1707,8 +1707,10 @@ function visibleClefs() {
 }
 
 function rankedClefs() {
-  const order = state.settings.order;
-  return visibleClefs().sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const { order, colors } = state.settings;
+  const ranked = visibleClefs().sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const coloured = ranked.filter((c) => colors.get(c.id) !== LineColor.NEUTRAL);
+  return coloured.length === 1 ? [coloured[0], ...ranked.filter((c) => c !== coloured[0])] : ranked;
 }
 
 function clefSpan() {
