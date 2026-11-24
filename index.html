@@ -346,6 +346,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
 .options { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
+.options[hidden] { display: none; }
 .settings {
   --mini: 36px;
   display: none;
@@ -503,6 +504,7 @@ main[data-mode="group"] .segments button[aria-pressed="true"]::before { content:
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 .for-groups { display: none; }
 main[data-mode="group"] .for-groups { display: block; }
+main:is([data-mode="interval"], [data-mode="edit"]) .for-notes { display: none; }
 main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .colors, main[data-mode="group"] .clef-row .grip { display: none; }
 main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 
@@ -586,6 +588,78 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
   .settings-toggle, .settings-close { display: none; }
   .dock { max-width: 760px; width: 100%; justify-self: center; overflow: visible; margin: 0; padding: 0; }
 }
+.answers .black { display: none; }
+.answers[data-pad="piano"] {
+  --key-h: 132px;
+  --key: light-dark(#ffffff, #e4dfd4);
+  --key-ink: #1d1b16;
+  --key-edge: light-dark(#a8a192, #8a8476);
+  --key-ok: #1a7f37;
+  --key-ok-soft: light-dark(#e3f4e8, #c6e4cf);
+  --key-ko: #b42318;
+  --key-ko-soft: light-dark(#fbe6e3, #efc9c3);
+  --sharp: light-dark(#26241f, #0c0b0a);
+  position: relative;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.answers[data-pad="piano"] .answer {
+  grid-column: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: var(--key-h);
+  padding: 0 0 12px;
+  border-radius: 0 0 8px 8px;
+  font-size: 15px;
+  background: var(--key);
+  border-color: var(--key-edge);
+  color: var(--key-ink);
+}
+.answers[data-pad="piano"] .answer:hover:not(:disabled) { border-color: var(--key-ink); }
+.answers[data-pad="piano"] .answer:active:not(:disabled) { background: color-mix(in oklab, var(--key) 82%, var(--accent)); }
+.answers[data-pad="piano"] .answer kbd { color: #5d584d; }
+.answers[data-pad="piano"] .answer.correct { background: var(--key-ok-soft); border: 2px solid var(--key-ok); color: var(--key-ok); }
+.answers[data-pad="piano"] .answer.wrong { background: var(--key-ko-soft); border: 2px solid var(--key-ko); color: var(--key-ko); }
+.answers[data-pad="piano"] .black {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: calc(var(--k) * 100% / 7 - 4.25%);
+  width: 8.5%;
+  height: 60%;
+  min-height: 0;
+  padding: 0 0 8px;
+  z-index: 1;
+  background: var(--sharp);
+  border: 1px solid light-dark(#26241f, #4a463d);
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  color: #ece7dc;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.answers[data-pad="piano"] .black:hover:not(:disabled) { border-color: light-dark(#26241f, #6b6658); }
+.answers[data-pad="piano"] .black:active:not(:disabled) { background: color-mix(in oklab, var(--sharp) 70%, var(--accent)); }
+.answers[data-pad="piano"] .black.wrong { background: var(--key-ko); border-color: var(--key-ko); color: #ffffff; animation: shake .25s; }
+.answers[data-pad="piano"][data-names="false"] .name { visibility: hidden; }
+.answers > .black[data-note="7"] { --k: 1; }
+.answers > .black[data-note="8"] { --k: 2; }
+.answers > .black[data-note="9"] { --k: 4; }
+.answers > .black[data-note="10"] { --k: 5; }
+.answers > .black[data-note="11"] { --k: 6; }
+@media (hover: hover) and (pointer: fine) {
+  .answers[data-pad="piano"] .answer { padding-bottom: 24px; }
+  .answers[data-pad="piano"] .answer kbd { top: auto; bottom: 6px; right: 0; left: 0; text-align: center; }
+}
+@media (max-height: 559px) and (min-width: 600px) {
+  .answers[data-pad="piano"] { --key-h: 100px; }
+}
 @media (max-height: 559px) and (min-width: 600px) {
   main {
     grid-template-areas: "staff dock";
@@ -662,6 +736,11 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
         <button type="button" class="answer" data-note="4">Sol<kbd>5</kbd></button>
         <button type="button" class="answer" data-note="5">La<kbd>6</kbd></button>
         <button type="button" class="answer" data-note="6">Si<kbd>7</kbd></button>
+        <button type="button" class="black" data-note="7" aria-label="Do dièse"><span class="name">Do♯</span></button>
+        <button type="button" class="black" data-note="8" aria-label="Ré dièse"><span class="name">Ré♯</span></button>
+        <button type="button" class="black" data-note="9" aria-label="Fa dièse"><span class="name">Fa♯</span></button>
+        <button type="button" class="black" data-note="10" aria-label="Sol dièse"><span class="name">Sol♯</span></button>
+        <button type="button" class="black" data-note="11" aria-label="La dièse"><span class="name">La♯</span></button>
       </div>
     </div>
     <div class="panel setup-panel">
@@ -743,6 +822,16 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       </div>
       <p class="help" id="groupTime"></p>
     </details>
+    <details class="group for-notes" id="padGroup">
+      <summary>Réponses</summary>
+      <div class="options" role="radiogroup" aria-label="Réponses">
+        <label class="check"><input type="radio" name="pad" value="buttons">Boutons</label>
+        <label class="check"><input type="radio" name="pad" value="piano">Piano</label>
+      </div>
+      <div class="options" id="pianoOptions">
+        <label class="check"><input type="checkbox" id="pianoNames">Noms sur les touches</label>
+      </div>
+    </details>
     <details class="group" id="reachGroup">
       <summary>Notes à deviner</summary>
       <p class="help">Lignes supplémentaires autorisées autour des 5 lignes de chaque clef.</p>
@@ -822,8 +911,10 @@ const Panel = Object.freeze({ WELCOME: "welcome", GUESS: "guess", SETUP: "setup"
 const Mark = Object.freeze({ RIGHT: "is-correct", WRONG: "is-wrong", CURRENT: "is-current", PENDING: "" });
 const Accidental = Object.freeze({ NONE: "none", FLAT: "flat", NATURAL: "natural", SHARP: "sharp" });
 const Entry = Object.freeze({ STAFF: "staff", LETTERS: "letters" });
+const Pad = Object.freeze({ BUTTONS: "buttons", PIANO: "piano" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
+const KEY_NAMES = [...NOTE_NAMES, "do♯", "ré♯", "fa♯", "sol♯", "la♯"];
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 const INTERVAL_NAMES = ["seconde", "tierce", "quarte", "quinte", "sixte", "septième", "octave"];
 const INTERVAL_SHORT = ["2de", "3ce", "4te", "5te", "6te", "7e", "8ve"];
@@ -1058,6 +1149,8 @@ class Settings {
     this.colors = new Map(Object.values(ClefId).map((id) => [id, LineColor.NEUTRAL]));
     this.names = false;
     this.entry = Entry.STAFF;
+    this.pad = Pad.BUTTONS;
+    this.pianoNames = false;
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
     this.headerModes = new Set();
@@ -1080,6 +1173,8 @@ class Settings {
       colors: Object.fromEntries(this.colors),
       names: this.names,
       entry: this.entry,
+      pad: this.pad,
+      pianoNames: this.pianoNames,
       intervals: [...this.intervals],
       theme: this.theme,
       headerModes: [...this.headerModes],
@@ -1128,6 +1223,8 @@ class Settings {
     }
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Entry).includes(raw.entry)) s.entry = raw.entry;
+    if (Object.values(Pad).includes(raw.pad)) s.pad = raw.pad;
+    if (typeof raw.pianoNames === "boolean") s.pianoNames = raw.pianoNames;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
     if (Array.isArray(raw.headerModes)) s.headerModes = new Set(raw.headerModes.filter((m) => Object.values(Mode).includes(m)));
     if (typeof raw.homeButton === "boolean") s.homeButton = raw.homeButton;
@@ -1185,7 +1282,7 @@ class Quiz {
 
 class NoteQuiz extends Quiz {
   constructor() {
-    super(Mode.NOTES, NOTE_NAMES, NOTE_NAMES, "1234567", 1,
+    super(Mode.NOTES, KEY_NAMES, KEY_NAMES, "1234567", 1,
       new QuizWords("note", "une", "réussie", "un", "Quelle est cette note ?", "Combien de notes ?", "Aucune note devinée dans cette série."));
   }
 
@@ -1228,7 +1325,7 @@ class IntervalQuiz extends Quiz {
 
 class GroupQuiz extends Quiz {
   constructor() {
-    super(Mode.GROUPS, NOTE_NAMES, NOTE_NAMES, "1234567", GROUP_MAX,
+    super(Mode.GROUPS, KEY_NAMES, KEY_NAMES, "1234567", GROUP_MAX,
       new QuizWords("groupe", "un", "réussi", "un", "Quelles sont ces notes ?", "Combien de groupes ?", "Aucun groupe deviné dans cette série."));
   }
 
@@ -1592,6 +1689,8 @@ const answerButtons = [...answersEl.querySelectorAll(".answer")];
 const startButtons = [...document.querySelectorAll("button[data-start]")];
 const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
 const themeInputs = [...document.querySelectorAll("input[name=theme]")];
+const padInputs = [...document.querySelectorAll("input[name=pad]")];
+const blackKeys = [...answersEl.querySelectorAll(".black")];
 const headerInputs = [...document.querySelectorAll("input[data-header]")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
 
@@ -1998,7 +2097,7 @@ function drawGroupReview(L) {
       label(noteSvg, L, xk, L.labelY, noteName(a.target[k]), "truth", "middle");
       const given = a.answer[k];
       if (marks[k] === Mark.WRONG && given !== undefined) {
-        strike(noteSvg, label(noteSvg, L, xk, L.labelY + REVIEW_ROW * s, NOTE_NAMES[given], "is-wrong", "middle"), L);
+        strike(noteSvg, label(noteSvg, L, xk, L.labelY + REVIEW_ROW * s, KEY_NAMES[given], "is-wrong", "middle"), L);
       }
     });
   });
@@ -2213,7 +2312,10 @@ function labelQuiz(quiz) {
   answerButtons.forEach((b, i) => {
     const key = document.createElement("kbd");
     key.textContent = quiz.keys[i];
-    b.replaceChildren(choiceLabel(quiz.short[i]), key);
+    const name = document.createElement("span");
+    name.className = "name";
+    name.append(choiceLabel(quiz.short[i]));
+    b.replaceChildren(name, key);
     b.setAttribute("aria-label", capitalize(quiz.names[i]));
   });
   statCells.forEach((cell, i) => cell.title.replaceChildren(choiceLabel(quiz.short[i])));
@@ -2278,6 +2380,9 @@ function renderPanels() {
   });
   document.documentElement.dataset.theme = st.theme;
   for (const input of themeInputs) input.checked = input.value === st.theme;
+  for (const input of padInputs) input.checked = input.value === st.pad;
+  $("pianoOptions").hidden = st.pad !== Pad.PIANO;
+  $("pianoNames").checked = st.pianoNames;
   for (const input of intervalInputs) {
     input.checked = st.intervals.has(Number(input.dataset.interval));
     input.disabled = input.checked && st.intervals.size === 1;
@@ -2325,6 +2430,9 @@ function renderPanels() {
   feedback.className = `feedback ${tone}`;
   if (labelled !== g.quiz) labelQuiz(g.quiz);
   const [good, bad] = g.marks;
+  answersEl.dataset.pad = g.quiz.mode === Mode.INTERVALS ? Pad.BUTTONS : st.pad;
+  answersEl.dataset.names = String(st.pianoNames);
+  for (const b of blackKeys) b.classList.toggle("wrong", Number(b.dataset.note) === bad);
   answerButtons.forEach((b, i) => {
     b.disabled = !g.quiz.enabled(i);
     b.classList.toggle("correct", i === good);
@@ -2777,12 +2885,12 @@ $("clearNotes").addEventListener("click", () => {
 });
 
 const SETTINGS_FOCUS = new Map([
-  [Mode.NOTES, ["reachGroup"]],
+  [Mode.NOTES, ["padGroup", "reachGroup"]],
   [Mode.INTERVALS, ["intervalsGroup", "reachGroup"]],
-  [Mode.GROUPS, ["groupsGroup", "reachGroup"]],
+  [Mode.GROUPS, ["groupsGroup", "padGroup", "reachGroup"]],
   [Mode.EDIT, ["linesGroup"]],
 ]);
-const focusGroups = ["groupsGroup", "reachGroup", "intervalsGroup", "linesGroup", "displayGroup"].map($);
+const focusGroups = ["groupsGroup", "padGroup", "reachGroup", "intervalsGroup", "linesGroup", "displayGroup"].map($);
 function focusSettings() {
   const ids = SETTINGS_FOCUS.get(state.mode);
   for (const d of focusGroups) d.open = ids.includes(d.id);
@@ -2803,6 +2911,17 @@ $("settingsClose").addEventListener("click", () => {
 for (const input of themeInputs) {
   input.addEventListener("change", () => {
     state.settings.theme = input.value;
+    settingsChanged();
+  });
+}
+for (const b of blackKeys) b.addEventListener("click", () => answer(Number(b.dataset.note)));
+$("pianoNames").addEventListener("change", (e) => {
+  state.settings.pianoNames = e.target.checked;
+  settingsChanged();
+});
+for (const input of padInputs) {
+  input.addEventListener("change", () => {
+    state.settings.pad = input.value;
     settingsChanged();
   });
 }
