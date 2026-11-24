@@ -308,7 +308,9 @@ main.settings-open .dock { display: none; }
 .settings-head { display: flex; align-items: center; justify-content: space-between; }
 .settings h2 { margin: 0; font-size: 17px; }
 .group { border-top: 1px solid var(--border); }
-.settings-head + .group { margin-top: var(--s2); }
+.reset { display: flex; align-items: center; justify-content: center; gap: var(--s2); width: 100%; margin: var(--s3) 0; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.reset:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.reset svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .group[open] { padding-bottom: var(--s3); }
 .group > summary {
   display: flex;
@@ -591,6 +593,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       <h2>Réglages</h2>
       <button type="button" class="link settings-close" id="settingsClose">Fermer</button>
     </div>
+    <button type="button" class="reset" id="resetSettings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Tout remettre par défaut</button>
     <details class="group" open>
       <summary>Clefs</summary>
       <div id="clefList"></div>
@@ -669,7 +672,6 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       </div>
     </details>
     <div class="settings-foot">
-      <button type="button" class="link" id="resetSettings">Réglages par défaut</button>
       <p class="credit">Symboles musicaux : police Bravura, SIL Open Font License 1.1.</p>
     </div>
   </aside>
@@ -2838,6 +2840,8 @@ for (const [id, change] of settingSteppers) {
 
 $("resetSettings").addEventListener("click", () => {
   state.settings = new Settings();
+  state.settingsOpen = false;
+  setMode(Mode.NOTES);
   settingsChanged();
 });
 
