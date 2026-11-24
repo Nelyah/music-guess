@@ -44,11 +44,17 @@ try {
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
+:root {
+  --red: light-dark(#bd3e52, #f5848e);
+  --ochre: light-dark(#986600, #dd9d35);
+  --green: light-dark(#078379, #04c5b6);
+  --blue: light-dark(#0077bc, #56b3fb);
+}
 [data-guide="neutral"] { --guide: var(--staff); }
-[data-guide="red"] { --guide: light-dark(#bd3e52, #f5848e); }
-[data-guide="ochre"] { --guide: light-dark(#986600, #dd9d35); }
-[data-guide="green"] { --guide: light-dark(#078379, #04c5b6); }
-[data-guide="blue"] { --guide: light-dark(#0077bc, #56b3fb); }
+[data-guide="red"] { --guide: var(--red); }
+[data-guide="ochre"] { --guide: var(--ochre); }
+[data-guide="green"] { --guide: var(--green); }
+[data-guide="blue"] { --guide: var(--blue); }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -291,7 +297,6 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .check { display: flex; align-items: center; gap: var(--s2); min-height: 44px; cursor: pointer; }
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
-.swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--guide); flex: none; }
 .options { display: flex; flex-wrap: wrap; column-gap: var(--s4); }
 .settings {
   --mini: 36px;
@@ -367,7 +372,7 @@ main.settings-open .dock { display: none; }
 .clef-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8em 64px;
+  grid-template-columns: minmax(0, 1fr) auto 64px;
   align-items: center;
   gap: var(--s2);
   border-radius: 10px;
@@ -395,15 +400,58 @@ main.settings-open .dock { display: none; }
 .segments button[aria-pressed="true"]:disabled { opacity: 1; cursor: default; }
 main[data-mode="group"] .segments button { padding: 0 var(--s2); }
 main[data-mode="group"] .segments button[aria-pressed="true"]::before { content: "✓"; margin-right: 3px; font-size: 12px; }
-.pick { display: flex; align-items: center; gap: 6px; }
-.pick select { flex: 1; min-width: 0; }
-.pick:has(:disabled) .swatch { opacity: .4; }
+.colors { position: relative; display: flex; }
+.dot { position: relative; width: 26px; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.dot::before {
+  content: "";
+  position: absolute; inset: 0; margin: auto;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--guide);
+  transition: transform .12s, box-shadow .12s;
+}
+.dot:hover:not(:disabled), .dot:active:not(:disabled) { background: transparent; }
+.dot:hover:not(:disabled)::before { transform: scale(1.15); }
+.dot[aria-pressed="true"]::before, .dot.picked::before { transform: scale(1.1); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--guide); }
+.dot.none::before, .dot.none::after {
+  content: "";
+  position: absolute; inset: 0; margin: auto;
+  width: 13px; height: 1.5px;
+  border-radius: 1px;
+  background: var(--control);
+  rotate: 45deg;
+  transition: transform .12s, height .12s, background-color .12s;
+}
+.dot.none::after { rotate: -45deg; }
+.dot.none:hover:not(:disabled)::after { transform: scale(1.15); }
+.dot.none[aria-pressed="true"]::before, .dot.none[aria-pressed="true"]::after { width: 14px; height: 3.5px; background: var(--ink); box-shadow: none; transform: none; }
+.dot.none[aria-pressed="true"], .dot.none[aria-pressed="true"]:hover:not(:disabled), .dot.none[aria-pressed="true"]:active:not(:disabled) { background: linear-gradient(var(--ink), var(--ink)) center calc(50% + 11px) / 16px 2.5px no-repeat; }
+.dot.more::before { background: conic-gradient(var(--red), var(--ochre), var(--green), var(--blue), var(--red)); }
+.dot.more.picked::before { background: var(--guide); }
+.color-menu {
+  position: absolute; top: calc(100% - 2px); right: -6px; z-index: 3;
+  display: flex;
+  padding: 2px 4px;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / .18);
+  animation: pop .12s ease-out;
+}
+.color-menu[hidden] { display: none; }
+.clef-row:has(.color-menu:not([hidden])) { z-index: 2; }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.96); } }
+@media (max-width: 359px) {
+  .dot { width: 24px; }
+  .clef-row { grid-template-columns: minmax(0, 1fr) auto 44px; }
+  .grip { width: 44px; }
+}
 .delta { color: var(--muted); font-size: 14px; }
 .settings-foot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding-top: var(--s3); border-top: 1px solid var(--border); }
 .credit { margin: 0; color: var(--muted); font-size: 12px; }
 .for-groups { display: none; }
 main[data-mode="group"] .for-groups { display: block; }
-main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .pick, main[data-mode="group"] .clef-row .grip { display: none; }
+main[data-mode="group"] .not-groups, main[data-mode="group"] .clef-row .colors, main[data-mode="group"] .clef-row .grip { display: none; }
 main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 
 .ledger, .barline { stroke: var(--staff); }
@@ -601,8 +649,6 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       <div id="clefList"></div>
       <p class="help for-groups">Plusieurs lignes possibles par clef : chaque groupe en tire une au hasard.</p>
       <div class="row not-groups"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
-      <label class="check not-groups"><input type="checkbox" id="guides">Repères de couleur</label>
-      <p class="help not-groups">Colore les 5 lignes habituelles de chaque clef. Sur une ligne commune à deux clefs, la clef placée plus haut dans la liste l'emporte.</p>
     </details>
     <details class="group for-groups" open>
       <summary>Groupes</summary>
@@ -830,13 +876,10 @@ class ColorDef {
   }
 }
 
-const LINE_COLORS = [
-  new ColorDef(LineColor.NEUTRAL, "Neutre"),
-  new ColorDef(LineColor.RED, "Rouge"),
-  new ColorDef(LineColor.OCHRE, "Ocre"),
-  new ColorDef(LineColor.GREEN, "Vert"),
-  new ColorDef(LineColor.BLUE, "Bleu"),
-];
+const NO_COLOR = new ColorDef(LineColor.NEUTRAL, "Sans couleur");
+const MAIN_COLORS = [new ColorDef(LineColor.RED, "Rouge"), new ColorDef(LineColor.BLUE, "Bleu")];
+const MORE_COLORS = [new ColorDef(LineColor.OCHRE, "Ocre"), new ColorDef(LineColor.GREEN, "Vert")];
+const MORE_LABEL = "Autres couleurs";
 
 class Rhythm {
   constructor(beams, tuplet, name) {
@@ -857,12 +900,11 @@ const RHYTHMS = new Map([
 ]);
 
 class StaffView {
-  constructor(bottom, top, clefs, phantom, guides) {
+  constructor(bottom, top, clefs, phantom) {
     this.bottom = bottom;
     this.top = top;
     this.clefs = clefs;
     this.phantom = phantom;
-    this.guides = guides;
   }
 }
 
@@ -879,11 +921,10 @@ class Settings {
     this.top = DEFAULT_TOP;
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
-    this.guides = false;
     this.order = FAMILIES.map((f) => f.id);
     this.staffLines = new Map(FAMILIES.map((f) => [f.id, f.defaultLine]));
     this.groupLines = new Map(FAMILIES.map((f) => [f.id, new Set([f.defaultLine])]));
-    this.colors = new Map([[ClefId.SOL, LineColor.RED], [ClefId.UT, LineColor.OCHRE], [ClefId.FA, LineColor.BLUE]]);
+    this.colors = new Map(Object.values(ClefId).map((id) => [id, LineColor.NEUTRAL]));
     this.names = false;
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
@@ -899,7 +940,6 @@ class Settings {
       top: this.top,
       bottom: this.bottom,
       reach: Object.fromEntries([...this.reach].map(([id, r]) => [id, [r[Side.BELOW], r[Side.ABOVE]]])),
-      guides: this.guides,
       order: this.order,
       staffLines: Object.fromEntries(this.staffLines),
       groupLines: Object.fromEntries([...this.groupLines].map(([id, lines]) => [id, [...lines]])),
@@ -939,7 +979,6 @@ class Settings {
       const known = new Set(lines.filter((n) => f.lines.includes(n)));
       if (known.size) s.groupLines.set(f.id, known);
     }
-    if (typeof raw.guides === "boolean") s.guides = raw.guides;
     if (Array.isArray(raw.order)) {
       const known = [...new Set(raw.order.filter((id) => ids.includes(id)))];
       s.order = [...known, ...ids.filter((id) => !known.includes(id))];
@@ -947,7 +986,7 @@ class Settings {
     const colors = Object.values(LineColor);
     if (raw.colors && typeof raw.colors === "object") {
       for (const id of ids) {
-        if (colors.includes(raw.colors[id])) s.colors.set(id, raw.colors[id]);
+        if (colors.includes(raw.colors[id]) && raw.guides !== false) s.colors.set(id, raw.colors[id]);
       }
     }
     if (typeof raw.names === "boolean") s.names = raw.names;
@@ -1368,14 +1407,22 @@ class ReachControl {
 const reachControls = [];
 
 class ClefRow {
-  constructor(clef, root, check, swatch, select, grip, chips) {
+  constructor(clef, root, check, picker, grip, chips) {
     this.clef = clef;
     this.root = root;
     this.check = check;
-    this.swatch = swatch;
-    this.select = select;
+    this.picker = picker;
     this.grip = grip;
     this.chips = chips;
+  }
+}
+
+class ColorPicker {
+  constructor(group, dots, more, menu) {
+    this.group = group;
+    this.dots = dots;
+    this.more = more;
+    this.menu = menu;
   }
 }
 
@@ -1501,10 +1548,10 @@ function noteMarks(target, answer, finished) {
 
 function staffView() {
   const st = state.settings;
-  if (state.mode !== Mode.GROUPS) return new StaffView(st.bottom, st.top, visibleClefs(), true, st.guides);
+  if (state.mode !== Mode.GROUPS) return new StaffView(st.bottom, st.top, visibleClefs(), true);
   const g = state.guess;
   const clefs = activePanel() === Panel.GUESS && g.clef ? [plainClef(g.clef)] : [];
-  return new StaffView(PLAIN_LOW, PLAIN_HIGH, clefs, false, false);
+  return new StaffView(PLAIN_LOW, PLAIN_HIGH, clefs, false);
 }
 
 function groupSize() {
@@ -1617,7 +1664,7 @@ function drawLines(svg, L, x1, x2) {
   const ranked = v.phantom ? rankedClefs() : [];
   for (let p = v.bottom; p <= v.top; p += 2) {
     const owner = ranked.find((c) => p >= c.staffLow && p <= c.staffHigh);
-    const coloured = owner && v.guides;
+    const coloured = owner && st.colors.get(owner.id) !== LineColor.NEUTRAL;
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
       class: owner ? "ref-line" : v.phantom ? "staff-line phantom-line" : "staff-line",
@@ -2046,11 +2093,14 @@ function renderPanels() {
       chip.setAttribute("aria-pressed", String(on));
       chip.disabled = state.mode === Mode.GROUPS && on && groupLines.size === 1;
     });
-    row.select.value = color;
-    row.select.disabled = !st.guides;
-    row.swatch.dataset.guide = color;
+    const picker = row.picker;
+    for (const dot of picker.dots) dot.setAttribute("aria-pressed", String(dot.dataset.guide === color));
+    const extra = MORE_COLORS.find((c) => c.id === color);
+    picker.more.classList.toggle("picked", Boolean(extra));
+    if (extra) picker.more.dataset.guide = extra.id;
+    else delete picker.more.dataset.guide;
+    picker.more.setAttribute("aria-label", extra ? `${MORE_LABEL} (${extra.name})` : MORE_LABEL);
   });
-  $("guides").checked = st.guides;
   document.documentElement.dataset.theme = st.theme;
   for (const input of themeInputs) input.checked = input.value === st.theme;
   for (const input of intervalInputs) {
@@ -2526,10 +2576,6 @@ for (const input of themeInputs) {
     settingsChanged();
   });
 }
-$("guides").addEventListener("change", (e) => {
-  state.settings.guides = e.target.checked;
-  settingsChanged();
-});
 for (const input of intervalInputs) {
   input.addEventListener("change", () => {
     const intervals = state.settings.intervals;
@@ -2597,9 +2643,84 @@ function stepButton(text, label, parent) {
   return button;
 }
 
-function fillColors(select) {
-  for (const color of LINE_COLORS) select.append(new Option(color.name, color.id));
+let openPicker = null;
+
+function closeColorMenu() {
+  if (!openPicker) return;
+  openPicker.menu.hidden = true;
+  openPicker.more.setAttribute("aria-expanded", "false");
+  openPicker = null;
 }
+
+function openColorMenu(picker) {
+  closeColorMenu();
+  picker.menu.hidden = false;
+  picker.more.setAttribute("aria-expanded", "true");
+  openPicker = picker;
+}
+
+function chooseColor(clef, id) {
+  const colors = state.settings.colors;
+  colors.set(clef.id, colors.get(clef.id) === id ? LineColor.NEUTRAL : id);
+  closeColorMenu();
+  settingsChanged();
+}
+
+function dotButton(parent, className, label) {
+  const dot = document.createElement("button");
+  dot.type = "button";
+  dot.className = className;
+  dot.title = label;
+  dot.setAttribute("aria-label", label);
+  parent.append(dot);
+  return dot;
+}
+
+function colorPicker(clef, parent) {
+  const group = document.createElement("div");
+  group.className = "colors";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", `${clef.label} : couleur`);
+  parent.append(group);
+  const colorDot = (color, host, className) => {
+    const dot = dotButton(host, className, color.name);
+    dot.dataset.guide = color.id;
+    dot.addEventListener("click", () => chooseColor(clef, color.id));
+    return dot;
+  };
+  const dots = [colorDot(NO_COLOR, group, "dot none"), ...MAIN_COLORS.map((c) => colorDot(c, group, "dot"))];
+  const more = dotButton(group, "dot more", MORE_LABEL);
+  more.setAttribute("aria-haspopup", "true");
+  more.setAttribute("aria-expanded", "false");
+  const menu = document.createElement("div");
+  menu.className = "color-menu";
+  menu.setAttribute("role", "group");
+  menu.setAttribute("aria-label", MORE_LABEL);
+  menu.hidden = true;
+  group.append(menu);
+  dots.push(...MORE_COLORS.map((c) => colorDot(c, menu, "dot")));
+  const picker = new ColorPicker(group, dots, more, menu);
+  more.addEventListener("click", () => {
+    if (openPicker === picker) {
+      closeColorMenu();
+      return;
+    }
+    openColorMenu(picker);
+    (menu.querySelector('[aria-pressed="true"]') ?? menu.firstElementChild).focus({ preventScroll: true });
+  });
+  group.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || openPicker !== picker) return;
+    closeColorMenu();
+    more.focus();
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  return picker;
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (openPicker && !openPicker.group.contains(event.target)) closeColorMenu();
+});
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let clefDrag = null;
@@ -2733,16 +2854,10 @@ for (const clef of FAMILIES) {
   const check = document.createElement("input");
   check.type = "checkbox";
   name.append(check, clef.label);
-  const pick = document.createElement("span");
-  pick.className = "pick";
-  const swatch = document.createElement("span");
-  swatch.className = "swatch";
-  const select = document.createElement("select");
-  select.setAttribute("aria-label", `${clef.label} : couleur`);
-  fillColors(select);
-  pick.append(swatch, select);
+  root.append(name);
+  const picker = colorPicker(clef, root);
   const grip = gripButton(clef);
-  root.append(name, pick, grip);
+  root.append(grip);
   const chips = [];
   if (clef.lines.length > 1) {
     const lines = document.createElement("div");
@@ -2762,7 +2877,7 @@ for (const clef of FAMILIES) {
     root.append(lines);
   }
   $("clefList").append(root);
-  const row = new ClefRow(clef, root, check, swatch, select, grip, chips);
+  const row = new ClefRow(clef, root, check, picker, grip, chips);
   clefRows.push(row);
   check.addEventListener("change", () => {
     const st = state.settings;
@@ -2772,10 +2887,6 @@ for (const clef of FAMILIES) {
     } else {
       st.clefs.delete(clef.id);
     }
-    settingsChanged();
-  });
-  select.addEventListener("change", () => {
-    state.settings.colors.set(clef.id, select.value);
     settingsChanged();
   });
   grip.addEventListener("pointerdown", (event) => startClefDrag(row, event));
