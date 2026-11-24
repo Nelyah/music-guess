@@ -190,7 +190,26 @@ main[data-mode="edit"] .notes { cursor: pointer; }
 .dock, .settings { grid-area: dock; min-width: 0; }
 .dock { overflow-y: auto; margin: -6px; padding: 6px; }
 .panel { display: none; flex-direction: column; gap: var(--s3); }
-main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel { display: flex; }
+main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel, main[data-panel="welcome"] .welcome-panel { display: flex; }
+.welcome-panel { gap: var(--s2); }
+.welcome-panel h2 { margin: 0; font-size: 18px; text-align: center; }
+.welcome-panel .hint { margin-bottom: var(--s1); }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-height: 72px;
+  padding: var(--s2) var(--s3);
+  text-align: left;
+}
+.choice b { font-size: 17px; font-weight: 650; }
+.choice span { color: var(--muted); font-size: 14px; line-height: 1.3; }
+.choice.primary { background: var(--accent-soft); border-color: var(--accent); }
+.choice.primary b { color: var(--accent); }
+.bar:has(+ main[data-panel="welcome"]) .modes { display: none; }
 .feedback, .hint { margin: 0; min-height: 1.45em; font-size: 17px; text-align: center; }
 .feedback { font-weight: 600; }
 .feedback:focus { outline: none; }
@@ -513,6 +532,17 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
   .answer { grid-column: span 2; min-height: 64px; }
   .answer:nth-child(5) { grid-column: 2 / span 2; }
 }
+@media (max-width: 679px) {
+  .bar:has(+ main[data-panel="welcome"]) h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+}
+@media (max-width: 519px) {
+  .bar:has(+ main[data-panel="welcome"]) { padding-inline: var(--s4); }
+  .bar:has(+ main[data-panel="welcome"]) .settings-toggle { width: auto; padding: 0 var(--s3); }
+  .bar:has(+ main[data-panel="welcome"]) .settings-toggle span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+}
+@media (min-width: 520px) {
+  .choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 @media (max-width: 519px) {
   main[data-stack="true"] .answers { display: flex; flex-direction: column-reverse; gap: 4px; }
   main[data-stack="true"] .answer { min-height: 44px; }
@@ -547,6 +577,8 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
   .per-note { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tool { min-height: 48px; flex-direction: row; gap: var(--s2); }
+  .choices { grid-template-columns: minmax(0, 1fr); }
+  .choice { min-height: 56px; }
 }
 </style>
 </head>
@@ -568,9 +600,19 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       <svg id="clefSvg" class="clefs" aria-hidden="true"></svg>
       <svg id="noteSvg" class="notes" role="img" aria-label="Portée"></svg>
     </div>
-    <p class="tap-hint" id="tapHint" hidden>Touche pour continuer</p>
+    <p class="tap-hint" id="tapHint" hidden>Toucher pour continuer</p>
   </div>
   <section class="dock" aria-label="Commandes">
+    <div class="panel welcome-panel">
+      <h2>Choisir un exercice</h2>
+      <p class="hint">Les clefs affichées se changent dans les réglages.</p>
+      <div class="choices">
+        <button type="button" class="choice primary" data-start="guess"><b>Notes</b><span>Nommer la note affichée.</span></button>
+        <button type="button" class="choice" data-start="interval"><b>Intervalles</b><span>Nommer l'écart entre deux notes.</span></button>
+        <button type="button" class="choice" data-start="group"><b>Groupes</b><span>Lire quelques notes en temps limité.</span></button>
+        <button type="button" class="choice" data-start="edit"><b>Écrire</b><span>Placer des notes librement sur la portée.</span></button>
+      </div>
+    </div>
     <div class="panel guess-panel">
       <div class="links">
         <button type="button" class="link" id="reviewOpen">Voir le bilan</button>
@@ -731,7 +773,7 @@ const ClefId = Object.freeze({ SOL: "sol", UT: "ut", FA: "fa" });
 const Side = Object.freeze({ BELOW: "below", ABOVE: "above" });
 const LineColor = Object.freeze({ NEUTRAL: "neutral", RED: "red", OCHRE: "ochre", GREEN: "green", BLUE: "blue" });
 const Theme = Object.freeze({ AUTO: "auto", LIGHT: "light", DARK: "dark" });
-const Panel = Object.freeze({ GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
+const Panel = Object.freeze({ WELCOME: "welcome", GUESS: "guess", SETUP: "setup", REVIEW: "review", EDIT: "edit" });
 const Mark = Object.freeze({ RIGHT: "is-correct", WRONG: "is-wrong", CURRENT: "is-current", PENDING: "" });
 
 const NOTE_NAMES = ["do", "ré", "mi", "fa", "sol", "la", "si"];
@@ -1385,6 +1427,7 @@ const state = {
   notes: [],
   selected: -1,
   settingsOpen: false,
+  welcome: true,
   guesses: QUIZZES.map((quiz) => (quiz.mode === Mode.GROUPS ? new GroupGuess(quiz) : new Guess(quiz))),
 };
 state.guess = state.guesses[0];
@@ -1448,6 +1491,7 @@ const noteSvg = $("noteSvg");
 const answersEl = document.getElementById("answers");
 const answerButtons = [...answersEl.querySelectorAll(".answer")];
 const modeButtons = [...document.querySelectorAll(".modes button")];
+const startButtons = [...document.querySelectorAll("button[data-start]")];
 const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
 const themeInputs = [...document.querySelectorAll("input[name=theme]")];
 
@@ -1576,6 +1620,7 @@ function clefSpan() {
 
 function activePanel() {
   const g = state.guess;
+  if (state.welcome) return Panel.WELCOME;
   if (state.mode === Mode.EDIT) return Panel.EDIT;
   if (g.choosing) return Panel.SETUP;
   return g.reviewing || g.complete ? Panel.REVIEW : Panel.GUESS;
@@ -1900,6 +1945,7 @@ function renderStaff() {
       if (grouped) drawGroupGuess(L);
       else drawGuess(L);
       break;
+    case Panel.WELCOME:
     case Panel.SETUP:
       noteSvg.setAttribute("aria-label", "Portée");
       break;
@@ -1928,15 +1974,15 @@ function guessMessage() {
     if (bad < 0) return [`✗ Temps écoulé · ${last.title}`, "ko"];
     return [`✗ C'est ${w.article} ${names[good]}, pas ${w.article} ${names[bad]}.`, "ko"];
   }
-  if (!visibleClefs().length) return ["Aucune clef affichée : active une clef dans les réglages.", ""];
+  if (!visibleClefs().length) return ["Aucune clef affichée. Les clefs s'activent dans les réglages.", ""];
   if (last) return [attemptSummary(last), "past"];
   return [w.question, ""];
 }
 
 function editMessage() {
   const n = state.notes.length;
-  if (!n) return "Touche la portée pour écrire une note.";
-  return `Note ${state.selected + 1} sur ${n} choisie. Touche la portée pour en ajouter une.`;
+  if (!n) return "Toucher la portée pour écrire une note.";
+  return `Note ${state.selected + 1} sur ${n} choisie. Toucher la portée pour en ajouter une.`;
 }
 
 function reviewMessage() {
@@ -1944,7 +1990,7 @@ function reviewMessage() {
   const w = g.quiz.words;
   if (!g.history.length) return w.none;
   const intro = g.complete ? "Série terminée !" : `Les ${w.unit}s de la série dans l'ordre.`;
-  return `${intro} En rouge, tes erreurs, avec ta réponse barrée.`;
+  return `${intro} En rouge, les erreurs, avec la réponse donnée barrée.`;
 }
 
 function setupMessage() {
@@ -2141,7 +2187,7 @@ function renderPanels() {
   $("staffSizeAdd").disabled = st.staffSize >= SIZE_MAX;
   const shown = TIME.format(st.readTime / 1000);
   const extra = TIME.format(st.answerTime / 1000);
-  $("groupTime").textContent = `Les notes restent ${shown}\u00a0s à l'écran, puis tu as encore ${extra}\u00a0s pour finir de les nommer.`;
+  $("groupTime").textContent = `Les notes restent ${shown}\u00a0s à l'écran, puis ${extra}\u00a0s de plus pour finir de les nommer.`;
 
   const [text, tone] = guessMessage();
   const feedback = $("feedback");
@@ -2239,7 +2285,7 @@ function save() {
       series: g instanceof GroupGuess ? [] : g.history.map((a) => [a.target, a.answer, a.ms]),
       length: g.length,
     }]));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, settings: state.settings, notes: state.notes, quizzes }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: state.mode, welcome: state.welcome, settings: state.settings, notes: state.notes, quizzes }));
   } catch {}
 }
 
@@ -2249,6 +2295,7 @@ function load() {
     raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
   } catch {}
   if (!raw || typeof raw !== "object") return;
+  state.welcome = raw.welcome === true;
   state.settings = Settings.from(raw.settings);
   if (Object.values(Mode).includes(raw.mode)) state.mode = raw.mode;
   if (Array.isArray(raw.notes)) {
@@ -2291,7 +2338,7 @@ function reveal() {
   const L = layout;
   if (!L) return;
   const panel = activePanel();
-  if (panel === Panel.REVIEW || panel === Panel.SETUP) return;
+  if (panel === Panel.REVIEW || panel === Panel.SETUP || panel === Panel.WELCOME) return;
   if (state.mode !== Mode.EDIT) {
     for (const p of state.guess.shown) revealY(L, L.y(p));
     return;
@@ -2443,7 +2490,7 @@ function pointerOnNotes(event) {
 }
 
 noteSvg.addEventListener("click", (event) => {
-  if (state.mode !== Mode.EDIT || !layout) return;
+  if (activePanel() !== Panel.EDIT || !layout) return;
   const [x, y] = pointerOnNotes(event);
   const i = layout.noteIndex(x);
   const n = state.notes.length;
@@ -2452,7 +2499,7 @@ noteSvg.addEventListener("click", (event) => {
 });
 
 noteSvg.addEventListener("pointermove", (event) => {
-  if (state.mode !== Mode.EDIT || !layout || !ghost || event.pointerType !== "mouse") return;
+  if (activePanel() !== Panel.EDIT || !layout || !ghost || event.pointerType !== "mouse") return;
   const [x, y] = pointerOnNotes(event);
   const n = state.notes.length;
   ghost.replaceChildren();
@@ -2478,6 +2525,25 @@ scroller.addEventListener("scroll", () => {
 }, { passive: true });
 
 for (const b of modeButtons) b.addEventListener("click", () => setMode(b.dataset.mode));
+
+function begin(mode) {
+  state.welcome = false;
+  state.settingsOpen = false;
+  if (mode === state.mode) {
+    const g = state.guess;
+    if (mode !== Mode.EDIT && (g.target === null || g.answered)) {
+      clearTimeout(g.timer);
+      newTarget(g);
+    }
+    save();
+    render();
+  } else {
+    setMode(mode);
+  }
+  if (mode !== Mode.EDIT) $("feedback").focus();
+}
+
+for (const b of startButtons) b.addEventListener("click", () => begin(b.dataset.start));
 answerButtons.forEach((b, i) => b.addEventListener("click", () => answer(i)));
 
 function setReviewing(on) {
@@ -2967,6 +3033,7 @@ resetButton.addEventListener("click", () => {
   disarmReset();
   state.settings = new Settings();
   state.settingsOpen = false;
+  state.welcome = true;
   setMode(Mode.NOTES);
   settingsChanged();
 });
@@ -2974,6 +3041,7 @@ resetButton.addEventListener("click", () => {
 document.addEventListener("keydown", (event) => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
   const panel = activePanel();
+  if (panel === Panel.WELCOME) return;
   if (panel === Panel.SETUP || panel === Panel.REVIEW) {
     if (event.key !== "Escape") return;
     if (panel === Panel.SETUP) setChoosing(false);
