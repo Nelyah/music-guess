@@ -686,7 +686,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       <div id="clefList"></div>
       <p class="help for-groups">Plusieurs lignes possibles par clef : chaque groupe en tire une au hasard.</p>
     </details>
-    <details class="group for-groups" open>
+    <details class="group for-groups" id="groupsGroup" open>
       <summary>Groupes</summary>
       <div class="stepper">
         <span>Notes par groupe : <b id="groupSize"></b> <span class="delta" id="groupRhythm"></span></span>
@@ -705,7 +705,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       </div>
       <p class="help" id="groupTime"></p>
     </details>
-    <details class="group">
+    <details class="group" id="reachGroup">
       <summary>Notes à deviner</summary>
       <p class="help">Lignes supplémentaires autorisées autour des 5 lignes de chaque clef.</p>
       <div class="reach" id="reach">
@@ -714,7 +714,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
         <span class="reach-head">Au-dessus</span>
       </div>
     </details>
-    <details class="group not-groups">
+    <details class="group not-groups" id="intervalsGroup">
       <summary>Intervalles</summary>
       <p class="help">Intervalles proposés, montants ou descendants.</p>
       <div class="options">
@@ -727,7 +727,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
         <label class="check"><input type="checkbox" data-interval="8">Octave</label>
       </div>
     </details>
-    <details class="group not-groups">
+    <details class="group not-groups" id="linesGroup">
       <summary>Lignes de la portée</summary>
       <div class="stepper">
         <span>En haut : <b id="topName"></b> <span class="delta" id="topDelta"></span></span>
@@ -741,7 +741,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       </div>
       <div class="row fit-row"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
     </details>
-    <details class="group">
+    <details class="group" id="displayGroup">
       <summary>Affichage</summary>
       <div class="stepper">
         <span>Taille de la portée : <b id="staffSize"></b></span>
@@ -2661,9 +2661,23 @@ $("clearNotes").addEventListener("click", () => {
   commitNotes();
 });
 
+const SETTINGS_FOCUS = new Map([
+  [Mode.NOTES, ["reachGroup"]],
+  [Mode.INTERVALS, ["intervalsGroup", "reachGroup"]],
+  [Mode.GROUPS, ["groupsGroup", "reachGroup"]],
+  [Mode.EDIT, ["linesGroup"]],
+]);
+const focusGroups = ["groupsGroup", "reachGroup", "intervalsGroup", "linesGroup", "displayGroup"].map($);
+function focusSettings() {
+  const ids = SETTINGS_FOCUS.get(state.mode);
+  for (const d of focusGroups) d.open = ids.includes(d.id);
+  const panel = $("settings");
+  panel.scrollTop += $(ids[0]).getBoundingClientRect().top - panel.getBoundingClientRect().top;
+}
 $("settingsToggle").addEventListener("click", () => {
   state.settingsOpen = !state.settingsOpen;
   render();
+  if (state.settingsOpen && !state.welcome) focusSettings();
 });
 $("settingsClose").addEventListener("click", () => {
   state.settingsOpen = false;
