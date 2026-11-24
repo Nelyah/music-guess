@@ -294,6 +294,7 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .tool.primary { background: var(--accent-soft); border-color: var(--accent); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .row > button { flex: 1 1 auto; }
+.fit-row { margin: var(--s2) 0 var(--s3); }
 .check { display: flex; align-items: center; gap: var(--s2); min-height: 44px; cursor: pointer; }
 .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); flex: none; }
 .check.inline { padding: 0 var(--s2); }
@@ -648,7 +649,6 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
       <summary>Clefs</summary>
       <div id="clefList"></div>
       <p class="help for-groups">Plusieurs lignes possibles par clef : chaque groupe en tire une au hasard.</p>
-      <div class="row not-groups"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
     </details>
     <details class="group for-groups" open>
       <summary>Groupes</summary>
@@ -703,8 +703,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
         <button type="button" id="bottomRemove" aria-label="Enlever une ligne en bas">−</button>
         <button type="button" id="bottomAdd" aria-label="Ajouter une ligne en bas">+</button>
       </div>
-      <p class="help" id="lineCount"></p>
-      <p class="help">Garde le doigt appuyé sur + ou − pour aller plus vite.</p>
+      <div class="row fit-row"><button type="button" id="fitLines">Ajuster aux clefs</button></div>
     </details>
     <details class="group">
       <summary>Affichage</summary>
@@ -2110,10 +2109,9 @@ function renderPanels() {
   $("showNames").checked = st.names;
   $("topName").textContent = noteName(st.top);
   $("bottomName").textContent = noteName(st.bottom);
-  $("topDelta").textContent = formatDelta((st.top - DEFAULT_TOP) / 2);
-  $("bottomDelta").textContent = formatDelta((DEFAULT_BOTTOM - st.bottom) / 2);
-  const lines = (st.top - st.bottom) / 2 + 1;
-  $("lineCount").textContent = `${lines} ligne${lines > 1 ? "s" : ""} au total.`;
+  const span = clefSpan();
+  $("topDelta").textContent = span ? formatDelta((st.top - span[1]) / 2) : "";
+  $("bottomDelta").textContent = span ? formatDelta((span[0] - st.bottom) / 2) : "";
   const visible = visibleClefs();
   for (const control of reachControls) {
     const on = visible.some((c) => c.family === control.clef);
@@ -2127,7 +2125,6 @@ function renderPanels() {
   $("bottomRemove").disabled = st.bottom >= st.top;
   $("topAdd").disabled = st.top >= LINE_MAX;
   $("bottomAdd").disabled = st.bottom <= LINE_MIN;
-  const span = clefSpan();
   $("fitLines").disabled = !span || (span[0] === st.bottom && span[1] === st.top);
   $("groupSize").textContent = String(st.groupSize);
   $("groupRhythm").textContent = `(${RHYTHMS.get(st.groupSize).name})`;
