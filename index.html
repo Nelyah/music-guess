@@ -71,11 +71,25 @@ body {
 .bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--s3);
+  min-height: 60px;
   padding: var(--s2) var(--s4);
 }
 .bar h1 { flex: 1; margin: 0; font-size: 18px; font-weight: 650; }
+.modes {
+  display: flex;
+  margin-right: auto;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 12px;
+}
+.modes button { border: 0; min-width: 88px; font-weight: 600; background: transparent; }
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.modes[hidden], .bar[data-title="false"] h1, .bar[data-home="false"] .home { display: none; }
+.home[aria-current="page"], .home[aria-current="page"]:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
@@ -108,18 +122,8 @@ select {
   cursor: pointer;
 }
 select:disabled { cursor: not-allowed; }
-.modes {
-  display: flex;
-  padding: 3px;
-  gap: 3px;
-  background: var(--surface);
-  border: 1px solid var(--control);
-  border-radius: 12px;
-}
-.modes button { border: 0; min-width: 88px; font-weight: 600; background: transparent; }
-.modes button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-.settings-toggle { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
-.settings-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.bar-button { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.bar-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .link {
   border: 0;
   background: transparent;
@@ -193,7 +197,6 @@ main[data-mode="edit"] .notes { cursor: pointer; }
 main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, main[data-panel="review"] .review-panel, main[data-panel="edit"] .edit-panel, main[data-panel="welcome"] .welcome-panel { display: flex; }
 .welcome-panel { gap: var(--s2); }
 .welcome-panel h2 { margin: 0; font-size: 18px; text-align: center; }
-.welcome-panel .hint { margin-bottom: var(--s1); }
 .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
 .choice {
   display: flex;
@@ -209,7 +212,6 @@ main[data-panel="guess"] .guess-panel, main[data-panel="setup"] .setup-panel, ma
 .choice span { color: var(--muted); font-size: 14px; line-height: 1.3; }
 .choice.primary { background: var(--accent-soft); border-color: var(--accent); }
 .choice.primary b { color: var(--accent); }
-.bar:has(+ main[data-panel="welcome"]) .modes { display: none; }
 .feedback, .hint { margin: 0; min-height: 1.45em; font-size: 17px; text-align: center; }
 .feedback { font-weight: 600; }
 .feedback:focus { outline: none; }
@@ -362,6 +364,7 @@ main.settings-open .dock { display: none; }
 .group[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 .group > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .help { margin: 0 0 var(--s2); color: var(--muted); font-size: 14px; }
+.subhead { margin: var(--s3) 0 0; font-size: 15px; font-weight: 650; }
 .stepper { display: flex; align-items: center; gap: var(--s2); min-height: 48px; }
 .stepper > span { flex: 1; }
 .stepper button, .mini button {
@@ -511,18 +514,13 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-@media (max-width: 679px) {
-  .bar h1 {
-    position: absolute; width: 1px; height: 1px; overflow: hidden;
-    clip: rect(0 0 0 0); white-space: nowrap;
-  }
-}
 @media (max-width: 519px) {
-  .bar { padding-inline: var(--s2); gap: var(--s2); }
-  .modes { flex: 1; }
-  .modes button { flex: 1 1 auto; min-width: 0; padding: 0 var(--s2); }
-  .settings-toggle { width: 44px; padding: 0; }
-  .settings-toggle span {
+  .bar { padding-inline: var(--s4) var(--s2); gap: var(--s2); }
+  .bar-button { width: 44px; padding: 0; }
+  .modes { min-width: 0; }
+  .modes button { flex: 0 1 auto; min-width: 0; padding: 0 var(--s2); }
+  .modes:has(button:not([hidden]) ~ button:not([hidden]) ~ button:not([hidden])) button { padding: 0 var(--s1); }
+  .bar-button span {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip: rect(0 0 0 0); white-space: nowrap;
   }
@@ -532,13 +530,9 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
   .answer { grid-column: span 2; min-height: 64px; }
   .answer:nth-child(5) { grid-column: 2 / span 2; }
 }
-@media (max-width: 679px) {
-  .bar:has(+ main[data-panel="welcome"]) h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
-}
 @media (max-width: 519px) {
-  .bar:has(+ main[data-panel="welcome"]) { padding-inline: var(--s4); }
-  .bar:has(+ main[data-panel="welcome"]) .settings-toggle { width: auto; padding: 0 var(--s3); }
-  .bar:has(+ main[data-panel="welcome"]) .settings-toggle span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .bar[data-title="true"] .settings-toggle { width: auto; padding: 0 var(--s3); }
+  .bar[data-title="true"] .settings-toggle span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
 }
 @media (min-width: 520px) {
   .choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -583,15 +577,16 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 </style>
 </head>
 <body>
-<header class="bar">
+<header class="bar" id="bar">
   <h1>Lecture des clefs</h1>
-  <div class="modes" role="group" aria-label="Mode">
+  <div class="modes" role="group" aria-label="Exercice">
     <button type="button" data-mode="guess" aria-pressed="true">Notes</button>
     <button type="button" data-mode="interval" aria-pressed="false">Intervalles</button>
     <button type="button" data-mode="group" aria-pressed="false">Groupes</button>
     <button type="button" data-mode="edit" aria-pressed="false">Écrire</button>
   </div>
-  <button type="button" class="settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Réglages</span></button>
+  <button type="button" class="bar-button home" id="home" aria-label="Choisir un exercice"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg><span>Accueil</span></button>
+  <button type="button" class="bar-button settings-toggle" id="settingsToggle" aria-expanded="false" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Réglages</span></button>
 </header>
 <main id="app" data-mode="guess">
   <div class="staff" id="staff">
@@ -605,9 +600,8 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
   <section class="dock" aria-label="Commandes">
     <div class="panel welcome-panel">
       <h2>Choisir un exercice</h2>
-      <p class="hint">Les clefs affichées se changent dans les réglages.</p>
       <div class="choices">
-        <button type="button" class="choice primary" data-start="guess"><b>Notes</b><span>Nommer la note affichée.</span></button>
+        <button type="button" class="choice" data-start="guess"><b>Notes</b><span>Nommer la note affichée.</span></button>
         <button type="button" class="choice" data-start="interval"><b>Intervalles</b><span>Nommer l'écart entre deux notes.</span></button>
         <button type="button" class="choice" data-start="group"><b>Groupes</b><span>Lire quelques notes en temps limité.</span></button>
         <button type="button" class="choice" data-start="edit"><b>Écrire</b><span>Placer des notes librement sur la portée.</span></button>
@@ -758,6 +752,15 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
         <label class="check"><input type="radio" name="theme" value="auto">Auto</label>
         <label class="check"><input type="radio" name="theme" value="light">Clair</label>
         <label class="check"><input type="radio" name="theme" value="dark">Sombre</label>
+      </div>
+      <h3 class="subhead" id="headerItems">En-tête</h3>
+      <div class="options" role="group" aria-labelledby="headerItems">
+        <label class="check"><input type="checkbox" data-header="guess">Notes</label>
+        <label class="check"><input type="checkbox" data-header="interval">Intervalles</label>
+        <label class="check"><input type="checkbox" data-header="group">Groupes</label>
+        <label class="check"><input type="checkbox" data-header="edit">Écrire</label>
+        <label class="check"><input type="checkbox" id="homeButton">Accueil</label>
+        <label class="check"><input type="checkbox" checked disabled>Réglages</label>
       </div>
     </details>
     <div class="settings-foot">
@@ -969,6 +972,8 @@ class Settings {
     this.names = false;
     this.intervals = new Set(INTERVALS);
     this.theme = Theme.LIGHT;
+    this.headerModes = new Set();
+    this.homeButton = true;
     this.groupSize = GROUP_DEFAULT;
     this.readTime = READ_TIME_DEFAULT;
     this.answerTime = ANSWER_TIME_DEFAULT;
@@ -988,6 +993,8 @@ class Settings {
       names: this.names,
       intervals: [...this.intervals],
       theme: this.theme,
+      headerModes: [...this.headerModes],
+      homeButton: this.homeButton,
       groupSize: this.groupSize,
       readTime: this.readTime,
       answerTime: this.answerTime,
@@ -1032,6 +1039,8 @@ class Settings {
     }
     if (typeof raw.names === "boolean") s.names = raw.names;
     if (Object.values(Theme).includes(raw.theme)) s.theme = raw.theme;
+    if (Array.isArray(raw.headerModes)) s.headerModes = new Set(raw.headerModes.filter((m) => Object.values(Mode).includes(m)));
+    if (typeof raw.homeButton === "boolean") s.homeButton = raw.homeButton;
     if (Number.isInteger(raw.groupSize) && raw.groupSize >= GROUP_MIN && raw.groupSize <= GROUP_MAX) s.groupSize = raw.groupSize;
     const isTime = (v) => Number.isInteger(v) && v >= TIME_MIN && v <= TIME_MAX && v % TIME_STEP === 0;
     if (isTime(raw.readTime)) s.readTime = raw.readTime;
@@ -1490,10 +1499,11 @@ const clefSvg = $("clefSvg");
 const noteSvg = $("noteSvg");
 const answersEl = document.getElementById("answers");
 const answerButtons = [...answersEl.querySelectorAll(".answer")];
-const modeButtons = [...document.querySelectorAll(".modes button")];
 const startButtons = [...document.querySelectorAll("button[data-start]")];
 const intervalInputs = [...document.querySelectorAll("input[data-interval]")];
 const themeInputs = [...document.querySelectorAll("input[name=theme]")];
+const headerInputs = [...document.querySelectorAll("input[data-header]")];
+const modeButtons = [...document.querySelectorAll(".modes button")];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const mod7 = (p) => ((p % 7) + 7) % 7;
@@ -2123,7 +2133,22 @@ function renderPanels() {
   app.dataset.panel = activePanel();
   app.classList.toggle("settings-open", state.settingsOpen);
   $("settingsToggle").setAttribute("aria-expanded", String(state.settingsOpen));
-  for (const b of modeButtons) b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode));
+  const current = startButtons.find((b) => b.dataset.start === state.mode);
+  for (const b of startButtons) b.classList.toggle("primary", b === current);
+  const bar = $("bar");
+  for (const b of modeButtons) {
+    const active = !state.welcome && b.dataset.mode === state.mode;
+    b.setAttribute("aria-pressed", String(active));
+    b.hidden = !active && !st.headerModes.has(b.dataset.mode);
+  }
+  const tabs = modeButtons[0].parentElement;
+  tabs.hidden = modeButtons.every((b) => b.hidden);
+  bar.dataset.title = String(tabs.hidden);
+  bar.dataset.home = String(st.homeButton);
+  if (state.welcome) $("home").setAttribute("aria-current", "page");
+  else $("home").removeAttribute("aria-current");
+  for (const input of headerInputs) input.checked = st.headerModes.has(input.dataset.header);
+  $("homeButton").checked = st.homeButton;
 
   const list = $("clefList");
   st.order.forEach((id, i) => {
@@ -2524,11 +2549,24 @@ scroller.addEventListener("scroll", () => {
   scroller.classList.toggle("scrolled", scroller.scrollLeft > 0);
 }, { passive: true });
 
-for (const b of modeButtons) b.addEventListener("click", () => setMode(b.dataset.mode));
+function goHome() {
+  clearTimeout(state.guess.timer);
+  state.welcome = true;
+  state.settingsOpen = false;
+  save();
+  render();
+  startButtons.find((b) => b.dataset.start === state.mode).focus();
+}
+
+$("home").addEventListener("click", goHome);
 
 function begin(mode) {
   state.welcome = false;
   state.settingsOpen = false;
+  for (const g of state.guesses) {
+    g.reviewing = false;
+    g.choosing = false;
+  }
   if (mode === state.mode) {
     const g = state.guess;
     if (mode !== Mode.EDIT && (g.target === null || g.answered)) {
@@ -2639,6 +2677,19 @@ for (const input of themeInputs) {
     settingsChanged();
   });
 }
+for (const input of headerInputs) {
+  input.addEventListener("change", () => {
+    const modes = state.settings.headerModes;
+    if (input.checked) modes.add(input.dataset.header);
+    else modes.delete(input.dataset.header);
+    settingsChanged();
+  });
+}
+$("homeButton").addEventListener("change", (e) => {
+  state.settings.homeButton = e.target.checked;
+  settingsChanged();
+});
+for (const b of modeButtons) b.addEventListener("click", () => (state.welcome ? begin : setMode)(b.dataset.mode));
 for (const input of intervalInputs) {
   input.addEventListener("change", () => {
     const intervals = state.settings.intervals;
