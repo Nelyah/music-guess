@@ -404,7 +404,7 @@ main[data-mode="group"] .clef-row { grid-template-columns: minmax(0, 1fr); }
 
 .ledger, .barline { stroke: var(--staff); }
 .staff-line, .ref-line { stroke: var(--guide); }
-main[data-guides="true"] .staff-line { stroke: color-mix(in oklab, var(--guide) var(--mute), var(--paper)); }
+.phantom-line { stroke: color-mix(in oklab, var(--guide) var(--mute), var(--paper)); }
 .clef-glyph { fill: var(--ink); }
 .note .head { fill: var(--ink); }
 .note.is-selected .head { fill: var(--accent); }
@@ -691,8 +691,8 @@ const INTERVAL_SHORT = ["2de", "3ce", "4te", "5te", "6te", "7e", "8ve"];
 const INTERVALS = [2, 3, 4, 5, 6, 7, 8];
 const LINE_MIN = 0;
 const LINE_MAX = 62;
-const DEFAULT_TOP = 38;
-const DEFAULT_BOTTOM = 18;
+const DEFAULT_TOP = 42;
+const DEFAULT_BOTTOM = 14;
 const REACH_MAX = 8;
 const REACH_DEFAULT = 2;
 const NOTES_MAX = 200;
@@ -852,10 +852,11 @@ const RHYTHMS = new Map([
 ]);
 
 class StaffView {
-  constructor(bottom, top, clefs, guides) {
+  constructor(bottom, top, clefs, phantom, guides) {
     this.bottom = bottom;
     this.top = top;
     this.clefs = clefs;
+    this.phantom = phantom;
     this.guides = guides;
   }
 }
@@ -873,7 +874,7 @@ class Settings {
     this.top = DEFAULT_TOP;
     this.bottom = DEFAULT_BOTTOM;
     this.reach = new Map(Object.values(ClefId).map((id) => [id, new Reach()]));
-    this.guides = true;
+    this.guides = false;
     this.order = FAMILIES.map((f) => f.id);
     this.staffLines = new Map(FAMILIES.map((f) => [f.id, f.defaultLine]));
     this.groupLines = new Map(FAMILIES.map((f) => [f.id, new Set([f.defaultLine])]));
@@ -1495,10 +1496,10 @@ function noteMarks(target, answer, finished) {
 
 function staffView() {
   const st = state.settings;
-  if (state.mode !== Mode.GROUPS) return new StaffView(st.bottom, st.top, visibleClefs(), st.guides);
+  if (state.mode !== Mode.GROUPS) return new StaffView(st.bottom, st.top, visibleClefs(), true, st.guides);
   const g = state.guess;
   const clefs = activePanel() === Panel.GUESS && g.clef ? [plainClef(g.clef)] : [];
-  return new StaffView(PLAIN_LOW, PLAIN_HIGH, clefs, false);
+  return new StaffView(PLAIN_LOW, PLAIN_HIGH, clefs, false, false);
 }
 
 function groupSize() {
@@ -1608,14 +1609,15 @@ function glyph(parent, d, x, y, s, cls) {
 function drawLines(svg, L, x1, x2) {
   const st = state.settings;
   const v = L.view;
-  const ranked = v.guides ? rankedClefs() : [];
+  const ranked = v.phantom ? rankedClefs() : [];
   for (let p = v.bottom; p <= v.top; p += 2) {
     const owner = ranked.find((c) => p >= c.staffLow && p <= c.staffHigh);
+    const coloured = owner && v.guides;
     svgEl("line", {
       x1, x2, y1: L.y(p), y2: L.y(p),
-      class: owner ? "ref-line" : "staff-line",
-      "data-guide": owner ? st.colors.get(owner.id) : LineColor.NEUTRAL,
-      "stroke-width": owner ? L.refWidth : L.lineWidth,
+      class: owner ? "ref-line" : v.phantom ? "staff-line phantom-line" : "staff-line",
+      "data-guide": coloured ? st.colors.get(owner.id) : LineColor.NEUTRAL,
+      "stroke-width": coloured ? L.refWidth : L.lineWidth,
     }, svg);
   }
 }
@@ -1632,7 +1634,7 @@ function drawClefs(L) {
 }
 
 function mutedLine(v, p) {
-  if (!v.guides || p % 2 !== 0 || p < v.bottom || p > v.top) return false;
+  if (!v.phantom || p % 2 !== 0 || p < v.bottom || p > v.top) return false;
   return !v.clefs.some((c) => p >= c.staffLow && p <= c.staffHigh);
 }
 
@@ -2046,7 +2048,6 @@ function renderPanels() {
   $("guides").checked = st.guides;
   document.documentElement.dataset.theme = st.theme;
   for (const input of themeInputs) input.checked = input.value === st.theme;
-  app.dataset.guides = String(st.guides && state.mode !== Mode.GROUPS);
   for (const input of intervalInputs) {
     input.checked = st.intervals.has(Number(input.dataset.interval));
     input.disabled = input.checked && st.intervals.size === 1;
