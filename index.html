@@ -3296,11 +3296,18 @@ function gripButton(clef) {
   return button;
 }
 
-function showStaff(family) {
+function refitStaff(change) {
   const st = state.settings;
-  const clef = staffClef(family);
-  st.top = Math.max(st.top, clef.staffHigh);
-  st.bottom = Math.min(st.bottom, clef.staffLow);
+  const before = clefSpan();
+  change();
+  const checked = FAMILIES.filter((f) => st.clefs.has(f.id)).map(staffClef);
+  if (!checked.length) return;
+  const low = Math.min(...checked.map((c) => c.staffLow));
+  const high = Math.max(...checked.map((c) => c.staffHigh));
+  const above = before ? Math.max(0, st.top - before[1]) : 0;
+  const below = before ? Math.max(0, before[0] - st.bottom) : 0;
+  st.top = before ? clamp(high + above, LINE_MIN, LINE_MAX) : Math.max(st.top, high);
+  st.bottom = before ? clamp(low - below, LINE_MIN, LINE_MAX) : Math.min(st.bottom, low);
 }
 
 function pickLine(family, n) {
@@ -3310,8 +3317,8 @@ function pickLine(family, n) {
     if (!lines.has(n)) lines.add(n);
     else if (lines.size > 1) lines.delete(n);
   } else {
-    st.staffLines.set(family.id, n);
-    if (st.clefs.has(family.id)) showStaff(family);
+    if (st.clefs.has(family.id)) refitStaff(() => st.staffLines.set(family.id, n));
+    else st.staffLines.set(family.id, n);
   }
   settingsChanged();
 }
@@ -3351,12 +3358,8 @@ for (const clef of FAMILIES) {
   clefRows.push(row);
   check.addEventListener("change", () => {
     const st = state.settings;
-    if (check.checked) {
-      st.clefs.add(clef.id);
-      showStaff(clef);
-    } else {
-      st.clefs.delete(clef.id);
-    }
+    if (check.checked) refitStaff(() => st.clefs.add(clef.id));
+    else refitStaff(() => st.clefs.delete(clef.id));
     settingsChanged();
   });
   grip.addEventListener("pointerdown", (event) => startClefDrag(row, event));
